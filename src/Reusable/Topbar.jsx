@@ -1,57 +1,154 @@
-import {
-  EnvelopeIcon,
-  UserCircleIcon,
-  MagnifyingGlassIcon,
-  Bars3Icon,
-} from "@heroicons/react/24/outline";
-// import logo from "/assets/ABY.png";
+import { useState } from 'react';
+import { ChevronRight, Menu, X } from 'lucide-react';
 
-export default function TopBar({
-  sidebarOpen = true,
-  setSidebarOpen = () => {},
-}) {
+export default function Topbar() {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
   return (
-    <header className="w-full bg-white shadow px-6 py-3 flex items-center justify-between sticky top-0 z-40">
-      {/* Left section (Bars button) */}
-      <div className="flex items-center">
-        {!sidebarOpen && (
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="rounded-md bg-transparent text-black"
-          >
-            {/* <div className="flex flex-col items-center h-8 justify-center">
-              <img src={logo} alt="Logo" className="w-20 mb-1" />
-            </div> */}
-            <Bars3Icon className="h-6 w-6" />
-          </button>
-        )}
-      </div>
-
-      {/* Right section (Search + Icons) */}
-      <div className="flex items-center space-x-4">
-        {/* Search Input */}
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Search..."
-            className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-          />
-          <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-            <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+    <>
+      {/* Desktop Topbar - visible on sm screens and above */}
+      <nav className="hidden sm:block bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            {/* Logo */}
+            <a href="/" className="flex items-center">
+              <div className="flex items-center gap-2">
+                {/* <div className="w-8 h-8 bg-blue-600 rounded"></div>
+                <span className="text-xl font-bold text-gray-900">ITECONY</span>
+                <span className="text-sm text-gray-600">SOLUTIONS</span> */}
+              </div>
+            </a>
+            {/* Navigation Links */}
+            <div className="flex items-center gap-8">
+              <a href="/" className="text-black font-semibold hover:underline transition-colors">
+                Home
+              </a>
+              <a href="/communities" className="text-black font-semibold hover:underline transition-colors">
+                Communities
+              </a>
+              <a href="/projects" className="text-black font-semibold hover:underline transition-colors">
+                Projects
+              </a>
+              <a href="/resources" className="flex items-center gap-1 text-black font-semibold hover:underline transition-colors">
+                Resources
+                <ChevronRight className="w-4 h-4" />
+              </a>
+            </div>
+            {/* Login Button */}
+            <a
+              href="/login"
+              className="bg-blue-800 text-white flex items-center justify-center px-2 py-1 rounded-xl hover:bg-indigo-800 transition-colors"
+            >
+              Login
+            </a>
           </div>
         </div>
+      </nav>
 
-        {/* Notification Bell */}
-        <button className="relative text-gray-600 hover:text-black">
-          <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-600 rounded-full"></span>
-          <EnvelopeIcon className="h-6 w-6" />
-        </button>
+      {/* Mobile Topbar - visible only on mobile screens */}
+      <nav className="sm:hidden bg-white border-b border-gray-200">
+        <div className="px-4">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-4">
+              {/* Mobile Menu Button */}
+              <button
+                onClick={toggleSidebar}
+                className="text-gray-900 hover:text-gray-600 transition-colors"
+                aria-label="Toggle menu"
+              >
+                <Menu className="w-6 h-6" />
+              </button>
 
-        {/* User Icon */}
-        <button className="text-gray-600 hover:text-black">
-          <UserCircleIcon className="h-7 w-7" />
-        </button>
-      </div>
-    </header>
+              {/* Logo */}
+              <a href="/" className="flex items-center">
+                <div className="flex items-center gap-2">
+                  {/* <div className="w-8 h-8 bg-blue-600 rounded"></div>
+                  <span className="text-xl font-bold text-gray-900">ITECONY</span>
+                  <span className="text-sm text-gray-600">SOLUTIONS</span> */}
+                </div>
+              </a>
+            </div>
+
+            {/* Login Button - Always visible on top right */}
+            <a href="/login">
+              <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm">
+                Login
+              </button>
+            </a>
+          </div>
+        </div>
+      </nav>
+
+      {/* Mobile Sidebar */}
+      {isSidebarOpen && (
+        <>
+          {/* Overlay */}
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 sm:hidden"
+            onClick={toggleSidebar}
+          ></div>
+
+          {/* Sidebar */}
+          <div className="fixed top-0 left-0 h-full w-64 bg-white shadow-lg z-50 sm:hidden">
+            <div className="flex flex-col h-full">
+              {/* Sidebar Header */}
+              <div className="flex justify-between items-center p-4 border-b border-gray-200">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-blue-600 rounded"></div>
+                  <div>
+                    {/* <span className="text-lg font-bold text-gray-900 block">ITECONY</span>
+                    <span className="text-xs text-gray-600">SOLUTIONS</span> */}
+                  </div>
+                </div>
+                <button
+                  onClick={toggleSidebar}
+                  className="text-gray-900 hover:text-gray-600 transition-colors"
+                  aria-label="Close menu"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Sidebar Navigation */}
+              <nav className="flex flex-col p-4 gap-4">
+                <a
+                  href="/"
+                  className="text-black hover:underline transition-colors py-2"
+                  onClick={toggleSidebar}
+                >
+                  Home
+                </a>
+                <a
+                  href="/communities"
+                  className="text-gray-900 hover:text-gray-600 transition-colors py-2"
+                  onClick={toggleSidebar}
+                >
+                  Communities
+                </a>
+                <a
+                  href="/projects"
+                  className="text-gray-900 hover:text-gray-600 transition-colors py-2"
+                  onClick={toggleSidebar}
+                >
+                  Projects
+                </a>
+                <a
+                  href="/resources"
+                  className="flex items-center gap-1 text-gray-900 hover:text-gray-600 transition-colors py-2"
+                  onClick={toggleSidebar}
+                >
+                  Resources
+                  <ChevronRight className="w-4 h-4" />
+                </a>
+              </nav>
+            </div>
+          </div>
+        </>
+      )}
+    </>
   );
 }
