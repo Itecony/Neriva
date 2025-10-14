@@ -4,59 +4,36 @@ const Comment = require('./Comment');
 const Project = require('./Project');
 const Notification = require('./Notification');
 const Message = require('./Message');
-const Conversation = require('./Conversation');
-const ConversationParticipant = require('./ConversationParticipant');
 
-// Existing relationships
+// Define relationships
+
+// User -> Posts (One to Many)
 User.hasMany(Post, { foreignKey: 'user_id', as: 'posts' });
 Post.belongsTo(User, { foreignKey: 'user_id', as: 'author' });
 
+// User -> Comments (One to Many)
 User.hasMany(Comment, { foreignKey: 'user_id', as: 'comments' });
 Comment.belongsTo(User, { foreignKey: 'user_id', as: 'author' });
 
+// Post -> Comments (One to Many)
 Post.hasMany(Comment, { foreignKey: 'post_id', as: 'comments' });
 Comment.belongsTo(Post, { foreignKey: 'post_id', as: 'post' });
 
+// User -> Projects (One to Many)
 User.hasMany(Project, { foreignKey: 'user_id', as: 'projects' });
 Project.belongsTo(User, { foreignKey: 'user_id', as: 'owner' });
 
+// User -> Notifications (One to Many)
 User.hasMany(Notification, { foreignKey: 'user_id', as: 'notifications' });
 Notification.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
-// NEW: Messaging relationships
-User.belongsToMany(Conversation, {
-  through: ConversationParticipant,
-  foreignKey: 'user_id',
-  otherKey: 'conversation_id',
-  as: 'conversations'
-});
+// User -> Messages (One to Many - as sender)
+User.hasMany(Message, { foreignKey: 'sender_id', as: 'sentMessages' });
+Message.belongsTo(User, { foreignKey: 'sender_id', as: 'sender' });
 
-Conversation.belongsToMany(User, {
-  through: ConversationParticipant,
-  foreignKey: 'conversation_id',
-  otherKey: 'user_id',
-  as: 'participants'
-});
-
-Conversation.hasMany(Message, {
-  foreignKey: 'conversation_id',
-  as: 'messages'
-});
-
-Message.belongsTo(Conversation, {
-  foreignKey: 'conversation_id',
-  as: 'conversation'
-});
-
-User.hasMany(Message, {
-  foreignKey: 'sender_id',
-  as: 'sentMessages'
-});
-
-Message.belongsTo(User, {
-  foreignKey: 'sender_id',
-  as: 'sender'
-});
+// User -> Messages (One to Many - as receiver)
+User.hasMany(Message, { foreignKey: 'receiver_id', as: 'receivedMessages' });
+Message.belongsTo(User, { foreignKey: 'receiver_id', as: 'receiver' });
 
 module.exports = {
   User,
@@ -64,7 +41,5 @@ module.exports = {
   Comment,
   Project,
   Notification,
-  Message,
-  Conversation,
-  ConversationParticipant
+  Message
 };

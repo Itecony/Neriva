@@ -1,55 +1,103 @@
-const { Message, User } = require('../models');
+const { Message, Conversation, ConversationParticipant, User } = require('../models');
 const { Op } = require('sequelize');
 
-// Get all conversations for a user
+// Get or create direct conversation
+const getOrCreateDirectConversation = async (req, res) => {
+  try {
+    const { recipientId } = req.body;
+    const userId = req.user.id;
+
+    // Find existing direct conversation
+    let conversation = await Conversation.findOne({
+      where: { type: 'direct' },
+      include: [{
+        model: User,
+        as: 'participants',
+        where: { id: [userId, recipientId] },
+        through: { attributes: [] }
+      }]
+    });
+
+    if (conversation && conversation.participants.length === 2) {
+      return res.status(200).json({ conversation });
+    }
+
+    // Create new conversation
+    conversation = await Conversation.create({ type: 'direct' });
+    
+    await ConversationParticipant.bulkCreate([
+      { conversation_id: conversation.id, user_id: userId },
+      { conversation_id: conversation.id, user_id: recipientId }
+    ]);
+
+    res.status(201).json({ conversation });
+  } catch (error) {
+    console.error('Get/create conversation error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Create group conversation
+const createGroupConversation = async (req, res) => {
+  try {
+    const { participantIds, groupName } = req.body;
+    const creatorId = req.user.id;
+
+    const conversation = await Conversation.create({
+      type: 'group',
+      name: groupName
+    });
+
+    const participants = [creatorId, ...participantIds];
+    await ConversationParticipant.bulkCreate(
+      participants.map(userId => ({
+        conversation_id: conversation.id,
+        user_id: userId
+      }))
+    );
+
+    res.status(201).json({ conversation });
+  } catch (error) {
+    console.error('Create group conversation error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Get user's conversations
 const getConversations = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // Get unique conversation IDs where user is involved
-    const messages = await Message.findAll({
+    const conversations = await Conversation.findAll({
+      include: [
+        {
+          model: User,
+          as: 'participants',
+          attributes: ['id', 'firstName', 'lastName', 'avatar'],
+          through: { attributes: [] }
+        },
+        {
+          model: Message,
+          as: 'messages',
+          limit: 1,
+          order: [['created_at', 'DESC']],
+          include: [{
+            model: User,
+            as: 'sender',
+            attributes: ['id', 'firstName', 'lastName']
+          }]
+        }
+      ],
       where: {
-        [Op.or]: [
-          { sender_id: userId },
-          { receiver_id: userId }
-        ]
+        id: {
+          [Op.in]: await ConversationParticipant.findAll({
+            where: { user_id: userId },
+            attributes: ['conversation_id']
+          }).then(records => records.map(r => r.conversation_id))
+        }
       },
-      attributes: ['conversation_id'],
-      group: ['conversation_id'],
-      raw: true
+      order: [['updated_at', 'DESC']]
     });
-
-    const conversationIds = [...new Set(messages.map(m => m.conversation_id))];
-
-    // Get last message for each conversation
-    const conversations = await Promise.all(
-      conversationIds.map(async (convId) => {
-        const lastMessage = await Message.findOne({
-          where: { conversation_id: convId },
-          include: [
-            {
-              model: User,
-              as: 'sender',
-              attributes: ['id', 'firstName', 'lastName', 'profilePicture', 'avatar']
-            },
-            {
-              model: User,
-              as: 'receiver',
-              attributes: ['id', 'firstName', 'lastName', 'profilePicture', 'avatar']
-            }
-          ],
-          order: [['created_at', 'DESC']]
-        });
-
-        return {
-          conversation_id: convId,
-          lastMessage,
-          otherUser: lastMessage.sender_id === userId 
-            ? lastMessage.receiver 
-            : lastMessage.sender
-        };
-      })
-    );
 
     res.status(200).json({ conversations });
   } catch (error) {
@@ -58,36 +106,33 @@ const getConversations = async (req, res) => {
   }
 };
 
-// Get messages in a specific conversation
+// Get messages in a conversation
 const getMessages = async (req, res) => {
   try {
     const { conversationId } = req.params;
     const userId = req.user.id;
 
-    const messages = await Message.findAll({
-      where: { conversation_id: conversationId },
-      include: [
-        {
-          model: User,
-          as: 'sender',
-          attributes: ['id', 'firstName', 'lastName', 'profilePicture', 'avatar']
-        },
-        {
-          model: User,
-          as: 'receiver',
-          attributes: ['id', 'firstName', 'lastName', 'profilePicture', 'avatar']
-        }
-      ],
-      order: [['created_at', 'ASC']]
+    // Verify user is participant
+    const participant = await ConversationParticipant.findOne({
+      where: {
+        conversation_id: conversationId,
+        user_id: userId
+      }
     });
 
-    // Verify user is part of this conversation
-    if (messages.length > 0) {
-      const firstMessage = messages[0];
-      if (firstMessage.sender_id !== userId && firstMessage.receiver_id !== userId) {
-        return res.status(403).json({ message: 'Not authorized to view this conversation' });
-      }
+    if (!participant) {
+      return res.status(403).json({ message: 'Not authorized' });
     }
+
+    const messages = await Message.findAll({
+      where: { conversation_id: conversationId },
+      include: [{
+        model: User,
+        as: 'sender',
+        attributes: ['id', 'firstName', 'lastName', 'avatar']
+      }],
+      order: [['created_at', 'ASC']]
+    });
 
     res.status(200).json({ messages });
   } catch (error) {
@@ -96,55 +141,37 @@ const getMessages = async (req, res) => {
   }
 };
 
-// Send a message
+// Send message
 const sendMessage = async (req, res) => {
   try {
-    const { receiver_id, content } = req.body;
+    const { conversationId, content } = req.body;
     const senderId = req.user.id;
 
-    if (!receiver_id || !content) {
-      return res.status(400).json({ message: 'Receiver ID and content are required' });
-    }
+    // Verify sender is participant
+    const participant = await ConversationParticipant.findOne({
+      where: {
+        conversation_id: conversationId,
+        user_id: senderId
+      }
+    });
 
-    if (receiver_id === senderId) {
-      return res.status(400).json({ message: 'Cannot send message to yourself' });
+    if (!participant) {
+      return res.status(403).json({ message: 'Not authorized' });
     }
-
-    // Check if receiver exists
-    const receiver = await User.findByPk(receiver_id);
-    if (!receiver) {
-      return res.status(404).json({ message: 'Receiver not found' });
-    }
-
-    // Create conversation ID (consistent for both users)
-    const conversationId = [senderId, receiver_id].sort().join('-');
 
     const message = await Message.create({
-      sender_id: senderId,
-      receiver_id,
       conversation_id: conversationId,
+      sender_id: senderId,
       content
     });
 
-    const messageWithUsers = await Message.findByPk(message.id, {
-      include: [
-        {
-          model: User,
-          as: 'sender',
-          attributes: ['id', 'firstName', 'lastName', 'profilePicture', 'avatar']
-        },
-        {
-          model: User,
-          as: 'receiver',
-          attributes: ['id', 'firstName', 'lastName', 'profilePicture', 'avatar']
-        }
-      ]
-    });
+    // Update conversation timestamp
+    await Conversation.update(
+      { updated_at: new Date() },
+      { where: { id: conversationId } }
+    );
 
-    res.status(201).json({ 
-      message: 'Message sent successfully', 
-      data: messageWithUsers 
-    });
+    res.status(201).json({ message });
   } catch (error) {
     console.error('Send message error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -152,6 +179,8 @@ const sendMessage = async (req, res) => {
 };
 
 module.exports = {
+  getOrCreateDirectConversation,
+  createGroupConversation,
   getConversations,
   getMessages,
   sendMessage

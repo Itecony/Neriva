@@ -1,42 +1,19 @@
-const { DataTypes } = require('sequelize');
-const { sequelize } = require('../config/database');
+const express = require('express');
+const router = express.Router();
+const {
+  getOrCreateDirectConversation,
+  createGroupConversation,
+  getConversations,
+  getMessages,
+  sendMessage
+} = require('../controllers/message.controller');
+const { protect } = require('../middleware/auth');
 
-const Message = sequelize.define('Message', {
-  id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true
-  },
-  sender_id: {
-    type: DataTypes.UUID,
-    allowNull: false,
-    references: {
-      model: 'users',
-      key: 'id'
-    },
-    onDelete: 'CASCADE'
-  },
-  receiver_id: {
-    type: DataTypes.UUID,
-    allowNull: false,
-    references: {
-      model: 'users',
-      key: 'id'
-    },
-    onDelete: 'CASCADE'
-  },
-  conversation_id: {
-    type: DataTypes.STRING(100),
-    allowNull: false
-  },
-  content: {
-    type: DataTypes.TEXT,
-    allowNull: false
-  }
-}, {
-  tableName: 'messages',
-  timestamps: true,
-  underscored: true
-});
+// All routes are protected
+router.post('/conversations/direct', protect, getOrCreateDirectConversation);
+router.post('/conversations/group', protect, createGroupConversation);
+router.get('/conversations', protect, getConversations);
+router.get('/conversations/:conversationId/messages', protect, getMessages);
+router.post('/messages', protect, sendMessage);
 
-module.exports = Message;
+module.exports = router;
