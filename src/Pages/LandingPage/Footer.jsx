@@ -15,11 +15,11 @@ export default function Footer() {
           {/* Brand Section */}
           <div>
             <div className="flex items-center gap-2 mb-6">
-              <div className="w-8 h-8 bg-blue-600 rounded"></div>
-              <div>
-                <span className="text-lg font-bold block">ITECONY</span>
-                <span className="text-xs text-gray-400">SOLUTIONS</span>
-              </div>
+              <img
+                src="/assets/Neriva Main logo Dark UI.png"
+                alt="Company Logo"
+                className="h-14 w-25"
+              />
             </div>
           </div>
           <div className="grid grid-cols-3 space-x-10">

@@ -17,9 +17,11 @@ export default function Topbar() {
             {/* Logo */}
             <a href="/" className="flex items-center">
               <div className="flex items-center gap-2">
-                {/* <div className="w-8 h-8 bg-blue-600 rounded"></div>
-                <span className="text-xl font-bold text-gray-900">ITECONY</span>
-                <span className="text-sm text-gray-600">SOLUTIONS</span> */}
+               <img
+                src="/assets/Neriva main logo Light UI.png"
+                alt="Company Logo"
+                className="h-14 w-25"
+              />
               </div>
             </a>
             {/* Navigation Links */}
@@ -88,7 +90,7 @@ export default function Topbar() {
         <>
           {/* Overlay */}
           <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 sm:hidden"
+            className="fixed inset-0 bg-opacity-50 z-40 sm:hidden"
             onClick={toggleSidebar}
           ></div>
 

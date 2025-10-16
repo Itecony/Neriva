@@ -1,5 +1,5 @@
 import react from "react";
-import Topbar from "../../Reusable/Topbar";
+import Topbar from "./Topbar";
 import HeroSection from "./HeroSection";
 import FeaturesSection from "./KeyFeatures";
 import StatsAndTestimonials from "./StatsAndTestimonials";
