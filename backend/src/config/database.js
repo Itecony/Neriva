@@ -42,10 +42,26 @@ const connectDB = async () => {
     await sequelize.authenticate();
     console.log('✅ PostgreSQL Connected Successfully!');
 
-    // Sync database (creates tables if they don't exist)
-    if (process.env.NODE_ENV === 'development') {
-      await sequelize.sync({ alter: true });
-      console.log('✅ Database tables synchronized');
+    // Sync database (creates/updates tables) - made opt-in to avoid risky automatic ALTERs
+    // Enable by setting DB_SYNC=true in your environment (development only).
+    if (process.env.DB_SYNC === 'true') {
+      try {
+        await sequelize.sync({ alter: true });
+        console.log('✅ Database tables synchronized');
+      } catch (syncErr) {
+        console.error('❌ Database sync error:', syncErr.message);
+        // Detect common Postgres enum migration problem and give actionable guidance
+        if (syncErr.message && syncErr.message.includes('cannot be cast automatically to type')) {
+          console.log('\n⚠️  Detected enum migration issue. Sequelize cannot automatically alter existing column to a Postgres enum type.');
+          console.log('Recommended fixes:');
+          console.log('  - Create the enum type manually and ALTER the column to use it;');
+          console.log('  - Or drop and recreate the affected table(s) if safe (destructive);');
+          console.log('  - Or avoid using `sequelize.sync({ alter: true })` for enum changes and use proper SQL migrations instead.');
+        }
+        throw syncErr;
+      }
+    } else {
+      console.log('ℹ️  Database sync skipped. To enable automatic schema sync (development only) set DB_SYNC=true');
     }
 
   } catch (err) {

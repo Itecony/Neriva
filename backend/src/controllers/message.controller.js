@@ -1,4 +1,8 @@
-const { Message, Conversation, ConversationParticipant, User } = require('../models');
+const { sequelize } = require('../config/database');
+const Message = require('../models/Message');
+const Conversation = require('../models/Conversation');
+const ConversationParticipant = require('../models/ConversationParticipant');
+const User = require('../models/User');
 const { Op } = require('sequelize');
 
 // Get or create direct conversation
@@ -67,8 +71,22 @@ const createGroupConversation = async (req, res) => {
 const getConversations = async (req, res) => {
   try {
     const userId = req.user.id;
+    console.log('Getting conversations for user:', userId);
+
+    // First get conversation IDs
+    const participantRecords = await ConversationParticipant.findAll({
+      where: { user_id: userId },
+      attributes: ['conversation_id']
+    });
+    
+    console.log('Participant records:', participantRecords);
+    const conversationIds = participantRecords.map(r => r.conversation_id);
+    console.log('Conversation IDs:', conversationIds);
 
     const conversations = await Conversation.findAll({
+      where: {
+        id: conversationIds
+      },
       include: [
         {
           model: User,
@@ -88,14 +106,6 @@ const getConversations = async (req, res) => {
           }]
         }
       ],
-      where: {
-        id: {
-          [Op.in]: await ConversationParticipant.findAll({
-            where: { user_id: userId },
-            attributes: ['conversation_id']
-          }).then(records => records.map(r => r.conversation_id))
-        }
-      },
       order: [['updated_at', 'DESC']]
     });
 
@@ -147,6 +157,22 @@ const sendMessage = async (req, res) => {
     const { conversationId, content } = req.body;
     const senderId = req.user.id;
 
+    console.log('=== SEND MESSAGE DEBUG ===');
+    console.log('conversationId:', conversationId, 'Type:', typeof conversationId);
+    console.log('senderId:', senderId, 'Type:', typeof senderId);
+    console.log('content:', content);
+
+    // Validate input
+    if (!conversationId) {
+      return res.status(400).json({ message: 'conversationId is required' });
+    }
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({ message: 'content is required' });
+    }
+
+    console.log('About to check participant...');
+    
     // Verify sender is participant
     const participant = await ConversationParticipant.findOne({
       where: {
@@ -155,15 +181,21 @@ const sendMessage = async (req, res) => {
       }
     });
 
+    console.log('Participant found:', participant);
+
     if (!participant) {
-      return res.status(403).json({ message: 'Not authorized' });
+      return res.status(403).json({ message: 'Not authorized to send messages in this conversation' });
     }
 
+    console.log('Creating message...');
+    
     const message = await Message.create({
       conversation_id: conversationId,
       sender_id: senderId,
-      content
+      content: content.trim()
     });
+
+    console.log('Message created:', message.id);
 
     // Update conversation timestamp
     await Conversation.update(
@@ -174,6 +206,7 @@ const sendMessage = async (req, res) => {
     res.status(201).json({ message });
   } catch (error) {
     console.error('Send message error:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

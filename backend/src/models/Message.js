@@ -3,9 +3,9 @@ const { sequelize } = require('../config/database');
 
 const Message = sequelize.define('Message', {
   id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
-    primaryKey: true
+    type: DataTypes.INTEGER,  // ← Changed from UUID to INTEGER
+    primaryKey: true,
+    autoIncrement: true
   },
   conversation_id: {
     type: DataTypes.UUID,

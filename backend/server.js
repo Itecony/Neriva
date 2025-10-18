@@ -126,6 +126,8 @@ app.use('*', (req, res) => {
       '',
       '-- Messages --',
       'GET /api/conversations (protected)',
+      'POST /api/conversations/direct (protected)',      // NEW
+      'POST /api/conversations/group (protected)',       // NEW
       'GET /api/messages/:conversationId (protected)',
       'POST /api/messages (protected)',
       '',
@@ -180,9 +182,11 @@ app.listen(PORT, HOST, () => {
   console.log(`   POST /api/notifications/mark-read - Mark as read (protected)`);
   console.log(`\n   💬 Messages`);
   console.log(`   GET  /api/conversations - Get all conversations (protected)`);
+  console.log(`   POST /api/conversations/direct - Create/get direct conversation (protected)`);
+  console.log(`   POST /api/conversations/group - Create group conversation (protected)`);
   console.log(`   GET  /api/messages/:conversationId - Get messages (protected)`);
   console.log(`   POST /api/messages - Send message (protected)`);
-  console.log(`\n   🏥 Health`);
+    console.log(`\n   🏥 Health`);
   console.log(`   GET  /api/health - Health check`);
 });
 
