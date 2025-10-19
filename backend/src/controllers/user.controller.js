@@ -1,4 +1,6 @@
 const User = require('../models/User');
+const Post = require('../models/Post');
+const Project = require('../models/Project');
 
 // @desc    Get user profile
 // @route   GET /api/profile
@@ -85,8 +87,33 @@ const getAllUsers = async (req, res) => {
   }
 };
 
+// @desc    Get current user info with relations
+// @route   GET /api/users/profile
+// @access  Private
+const getCurrentUser = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id, {
+      attributes: { exclude: ['password'] },
+      include: [
+        { model: Post, as: 'posts' },
+        { model: Project, as: 'projects' }
+      ]
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error('Get current user error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   getProfile,
   updateProfile,
-  getAllUsers
+  getAllUsers,
+  getCurrentUser
 };

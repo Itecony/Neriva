@@ -77,55 +77,39 @@ const signup = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    // Validation
-    if (!email || !password) {
-      return res.status(400).json({ 
-        message: 'Email and password are required' 
-      });
-    }
-
+    
     // Find user
     const user = await User.findOne({ where: { email } });
     if (!user) {
-      return res.status(401).json({ 
-        message: 'Invalid email or password' 
-      });
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
-
-    // Check if user registered with Google
-    if (user.authProvider === 'google') {
-      return res.status(400).json({ 
-        message: 'Please sign in with Google' 
-      });
-    }
-
+    
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
-      return res.status(401).json({ 
-        message: 'Invalid email or password' 
-      });
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
-
+    
     // Generate token
     const token = generateToken(user);
-
-    res.status(200).json({
-      message: 'Login successful',
+    
+    // Return token AND user data
+    res.json({
       token,
       user: {
         id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        username: user.username,
         email: user.email,
-        authProvider: user.authProvider
+        bio: user.bio,
+        role: user.role,  
+        interests: user.interests,
+        avatar: user.avatar,
+        createdAt: user.createdAt
+        // Add any other fields you need
       }
     });
-
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error during login' });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -188,6 +172,27 @@ const googleCallback = (req, res) => {
     </body>
     </html>
   `);
+};
+
+const getCurrentUser = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id, {
+      attributes: { exclude: ['password'] },
+      include: [
+        { model: Post, as: 'posts' },
+        { model: Project, as: 'projects' }
+        // Include other relations as needed
+      ]
+    });
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
 };
 
 module.exports = {
