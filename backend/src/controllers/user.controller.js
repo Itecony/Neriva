@@ -20,6 +20,10 @@ const getProfile = async (req, res) => {
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
+      bio: user.bio,
+      role: user.role,  
+      interests: user.interests,
+      avatar: user.avatar,
       profilePicture: user.profilePicture,
       authProvider: user.authProvider,
       createdAt: user.createdAt
@@ -56,6 +60,10 @@ const updateProfile = async (req, res) => {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
+        bio: user.bio,
+        role: user.role,  
+        interests: user.interests,
+        avatar: user.avatar,
         profilePicture: user.profilePicture,
         authProvider: user.authProvider,
         createdAt: user.createdAt
