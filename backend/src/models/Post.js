@@ -35,11 +35,8 @@ const Post = sequelize.define('Post', {
   views: {
     type: DataTypes.INTEGER,
     defaultValue: 0
-  },
-  image: {
-    type: DataTypes.TEXT,
-    allowNull: true
   }
+  //  REMOVED: image field - now using post_images table
 }, {
   tableName: 'posts',
   timestamps: true,

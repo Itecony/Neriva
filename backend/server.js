@@ -172,6 +172,8 @@ app.listen(PORT, HOST, () => {
   console.log(`   POST /api/posts/:id/view - Increment view count`);
   console.log(`   POST /api/posts/:id/comment - Add comment (protected)`);
   console.log(`   GET  /api/posts/:id/comments - Get post comments`);
+  console.log(`   POST /api/posts/upload-image - Upload image file (protected)`);  // NEW
+  console.log(`   DEL  /api/posts/:postId/images/:imageId - Delete image (protected)`);  // NEW
   console.log(`\n   🚀 Projects`);
   console.log(`   GET  /api/projects - Get all projects`);
   console.log(`   POST /api/projects - Create project (protected)`);
@@ -186,7 +188,7 @@ app.listen(PORT, HOST, () => {
   console.log(`   POST /api/conversations/group - Create group conversation (protected)`);
   console.log(`   GET  /api/messages/:conversationId - Get messages (protected)`);
   console.log(`   POST /api/messages - Send message (protected)`);
-    console.log(`\n   🏥 Health`);
+  console.log(`\n   🏥 Health`);
   console.log(`   GET  /api/health - Health check`);
 });
 

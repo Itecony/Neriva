@@ -1,6 +1,9 @@
 const { Post, User, Comment } = require('../models');
+const PostImage = require('../models/PostImage');
+const path = require('path');
+const fs = require('fs');
 
-// Get all posts
+// Get all posts (UPDATED - include images)
 const getPosts = async (req, res) => {
   try {
     const posts = await Post.findAll({
@@ -9,6 +12,12 @@ const getPosts = async (req, res) => {
           model: User,
           as: 'author',
           attributes: ['id', 'firstName', 'lastName', 'profilePicture', 'avatar']
+        },
+        {
+          model: PostImage,
+          as: 'images',
+          attributes: ['id', 'image_url', 'position'],
+          order: [['position', 'ASC']]
         }
       ],
       order: [['created_at', 'DESC']]
@@ -21,7 +30,7 @@ const getPosts = async (req, res) => {
   }
 };
 
-// Get top posts (by likes or views)
+// Get top posts (UPDATED - include images)
 const getTopPosts = async (req, res) => {
   try {
     const posts = await Post.findAll({
@@ -30,6 +39,12 @@ const getTopPosts = async (req, res) => {
           model: User,
           as: 'author',
           attributes: ['id', 'firstName', 'lastName', 'profilePicture', 'avatar']
+        },
+        {
+          model: PostImage,
+          as: 'images',
+          attributes: ['id', 'image_url', 'position'],
+          order: [['position', 'ASC']]
         }
       ],
       order: [['likes', 'DESC'], ['views', 'DESC']],
@@ -43,7 +58,7 @@ const getTopPosts = async (req, res) => {
   }
 };
 
-// Get single post
+// Get single post (UPDATED - include images)
 const getPostById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -54,6 +69,12 @@ const getPostById = async (req, res) => {
           model: User,
           as: 'author',
           attributes: ['id', 'firstName', 'lastName', 'profilePicture', 'avatar', 'bio']
+        },
+        {
+          model: PostImage,
+          as: 'images',
+          attributes: ['id', 'image_url', 'position', 'created_at'],
+          order: [['position', 'ASC']]
         },
         {
           model: Comment,
@@ -80,15 +101,14 @@ const getPostById = async (req, res) => {
   }
 };
 
-// Create post
+// Create post (UPDATED - support multiple images)
 const createPost = async (req, res) => {
   try {
-    const { title, content, tags, image } = req.body;
-    // Handle both req.user.id and req.user.userId
+    const { title, content, tags, images = [] } = req.body;
     const userId = req.user.id || req.user.userId;
 
-    console.log('User from token:', req.user); // Debug log
-    console.log('User ID:', userId); // Debug log
+    console.log('User from token:', req.user);
+    console.log('User ID:', userId);
 
     if (!userId) {
       return res.status(401).json({ message: 'User ID not found in token' });
@@ -98,20 +118,45 @@ const createPost = async (req, res) => {
       return res.status(400).json({ message: 'Title and content are required' });
     }
 
+    // Validate images array
+    if (images.length > 5) {
+      return res.status(400).json({ 
+        message: 'Maximum 5 images allowed per post' 
+      });
+    }
+
+    // Create post
     const post = await Post.create({
       user_id: userId,
       title,
       content,
-      tags: tags || [],
-      image: image || null
+      tags: tags || []
     });
 
+    // Create post images if provided
+    if (images.length > 0) {
+      const imageRecords = images.map((imageUrl, index) => ({
+        post_id: post.id,
+        image_url: imageUrl,
+        position: index
+      }));
+
+      await PostImage.bulkCreate(imageRecords);
+    }
+
+    // Fetch complete post with images and author
     const postWithAuthor = await Post.findByPk(post.id, {
       include: [
         {
           model: User,
           as: 'author',
           attributes: ['id', 'firstName', 'lastName', 'profilePicture', 'avatar']
+        },
+        {
+          model: PostImage,
+          as: 'images',
+          attributes: ['id', 'image_url', 'position', 'created_at'],
+          order: [['position', 'ASC']]
         }
       ]
     });
@@ -126,11 +171,11 @@ const createPost = async (req, res) => {
   }
 };
 
-// Update post
+// Update post (UPDATED - support updating images)
 const updatePost = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, content, tags, image } = req.body;
+    const { title, content, tags, images } = req.body;
     const userId = req.user.id || req.user.userId;
 
     const post = await Post.findByPk(id);
@@ -143,19 +188,52 @@ const updatePost = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to update this post' });
     }
 
+    // Validate images if provided
+    if (images && images.length > 5) {
+      return res.status(400).json({ 
+        message: 'Maximum 5 images allowed per post' 
+      });
+    }
+
+    // Update post fields
     await post.update({
       title: title || post.title,
       content: content || post.content,
-      tags: tags || post.tags,
-      image: image !== undefined ? image : post.image
+      tags: tags || post.tags
     });
 
+    // Update images if provided
+    if (images !== undefined) {
+      // Delete old images
+      await PostImage.destroy({
+        where: { post_id: id }
+      });
+
+      // Create new images
+      if (images.length > 0) {
+        const imageRecords = images.map((imageUrl, index) => ({
+          post_id: id,
+          image_url: imageUrl,
+          position: index
+        }));
+
+        await PostImage.bulkCreate(imageRecords);
+      }
+    }
+
+    // Fetch updated post with images
     const updatedPost = await Post.findByPk(id, {
       include: [
         {
           model: User,
           as: 'author',
           attributes: ['id', 'firstName', 'lastName', 'profilePicture', 'avatar']
+        },
+        {
+          model: PostImage,
+          as: 'images',
+          attributes: ['id', 'image_url', 'position', 'created_at'],
+          order: [['position', 'ASC']]
         }
       ]
     });
@@ -170,7 +248,7 @@ const updatePost = async (req, res) => {
   }
 };
 
-// Delete post
+// Delete post (existing - CASCADE will delete images automatically)
 const deletePost = async (req, res) => {
   try {
     const { id } = req.params;
@@ -195,7 +273,7 @@ const deletePost = async (req, res) => {
   }
 };
 
-// Like post
+// Like post (unchanged)
 const likePost = async (req, res) => {
   try {
     const { id } = req.params;
@@ -219,7 +297,7 @@ const likePost = async (req, res) => {
   }
 };
 
-// View post
+// View post (unchanged)
 const viewPost = async (req, res) => {
   try {
     const { id } = req.params;
@@ -243,7 +321,7 @@ const viewPost = async (req, res) => {
   }
 };
 
-// Add comment to post
+// Add comment to post (unchanged)
 const addComment = async (req, res) => {
   try {
     const { id } = req.params;
@@ -286,7 +364,7 @@ const addComment = async (req, res) => {
   }
 };
 
-// Get post comments
+// Get post comments (unchanged)
 const getPostComments = async (req, res) => {
   try {
     const { id } = req.params;
@@ -316,6 +394,97 @@ const getPostComments = async (req, res) => {
   }
 };
 
+// NEW: Upload single image
+const uploadImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No image file provided' });
+    }
+
+    // Return the file path/URL
+    const imageUrl = `uploads/${req.file.filename}`;
+    
+    res.status(200).json({
+      message: 'Image uploaded successfully',
+      image_url: imageUrl
+    });
+  } catch (error) {
+    console.error('Upload image error:', error);
+    res.status(500).json({ 
+      message: 'Failed to upload image',
+      error: error.message 
+    });
+  }
+};
+
+// NEW: Delete single image from post
+const deleteImage = async (req, res) => {
+  try {
+    const { postId, imageId } = req.params;
+    const userId = req.user.id || req.user.userId;
+
+    // Check if post exists and belongs to user
+    const post = await Post.findOne({
+      where: { id: postId }
+    });
+
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    if (post.user_id !== userId) {
+      return res.status(403).json({ message: 'Not authorized to delete this image' });
+    }
+
+    // Find and delete the image
+    const image = await PostImage.findOne({
+      where: { 
+        id: imageId,
+        post_id: postId 
+      }
+    });
+
+    if (!image) {
+      return res.status(404).json({ message: 'Image not found' });
+    }
+
+    // Delete from database
+    await image.destroy();
+
+    // Optional: Delete actual file from storage
+    const imagePath = path.join(__dirname, '../../', image.image_url);
+    if (fs.existsSync(imagePath)) {
+      fs.unlinkSync(imagePath);
+    }
+
+    // Get remaining images count
+    const remainingImages = await PostImage.count({
+      where: { post_id: postId }
+    });
+
+    // Reorder remaining images
+    const images = await PostImage.findAll({
+      where: { post_id: postId },
+      order: [['position', 'ASC']]
+    });
+
+    for (let i = 0; i < images.length; i++) {
+      await images[i].update({ position: i });
+    }
+
+    res.status(200).json({ 
+      message: 'Image deleted successfully',
+      remaining_images: remainingImages
+    });
+  } catch (error) {
+    console.error('Delete image error:', error);
+    res.status(500).json({ 
+      message: 'Failed to delete image',
+      error: error.message 
+    });
+  }
+};
+
 module.exports = {
   getPosts,
   getTopPosts,
@@ -326,5 +495,7 @@ module.exports = {
   likePost,
   viewPost,
   addComment,
-  getPostComments
+  getPostComments,
+  uploadImage,      // NEW
+  deleteImage       // NEW
 };
