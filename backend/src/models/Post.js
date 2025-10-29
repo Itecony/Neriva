@@ -24,6 +24,10 @@ const Post = sequelize.define('Post', {
     type: DataTypes.TEXT,
     allowNull: false
   },
+  code_snippets: {
+  type: DataTypes.ARRAY(DataTypes.TEXT),
+  defaultValue: []
+  },
   tags: {
     type: DataTypes.ARRAY(DataTypes.TEXT),
     defaultValue: []

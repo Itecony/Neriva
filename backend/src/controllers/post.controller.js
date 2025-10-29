@@ -101,10 +101,10 @@ const getPostById = async (req, res) => {
   }
 };
 
-// Create post (UPDATED - support multiple images)
+// Create post (UPDATED - support multiple images and code snippets)
 const createPost = async (req, res) => {
   try {
-    const { title, content, tags, images = [] } = req.body;
+    const { title, content, tags, images = [], code_snippets = [] } = req.body;
     const userId = req.user.id || req.user.userId;
 
     console.log('User from token:', req.user);
@@ -130,7 +130,8 @@ const createPost = async (req, res) => {
       user_id: userId,
       title,
       content,
-      tags: tags || []
+      tags: tags || [],
+      code_snippets: code_snippets || []
     });
 
     // Create post images if provided
@@ -171,11 +172,11 @@ const createPost = async (req, res) => {
   }
 };
 
-// Update post (UPDATED - support updating images)
+// Update post (UPDATED - support updating images and code snippets)
 const updatePost = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, content, tags, images } = req.body;
+    const { title, content, tags, images, code_snippets } = req.body;
     const userId = req.user.id || req.user.userId;
 
     const post = await Post.findByPk(id);
@@ -199,7 +200,8 @@ const updatePost = async (req, res) => {
     await post.update({
       title: title || post.title,
       content: content || post.content,
-      tags: tags || post.tags
+      tags: tags || post.tags,
+      code_snippets: code_snippets !== undefined ? code_snippets : post.code_snippets
     });
 
     // Update images if provided
