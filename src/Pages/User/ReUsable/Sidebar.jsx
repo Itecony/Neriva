@@ -13,7 +13,7 @@ import {
 
 export default function Sidebar() {
   const menuItems = [
-    { icon: Home, label: 'Home', href: '/' },
+    { icon: Home, label: 'Home', href: '/dashboard' },
     { icon: LayoutDashboard, label: 'Dreamboard', href: 'dashboard/dreamboard' },
     { icon: BookOpen, label: 'Resource Library', href: '/resources' },
     { icon: Users, label: 'Mentorship Hub', href: '/mentorship' },

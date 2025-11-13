@@ -23,9 +23,11 @@ export default function HeroSection() {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4">
+            <a href="/signup">
             <button className="bg-blue-900 font-semibold text-white px-3 sm:px-4 py-2 rounded-xl hover:bg-blue-700 transition-color">
               Join now
             </button>
+            </a>
             <button className="bg-white/10 border font-semibold text-blue-900 border-white text-shadow-blue-700 px-3 sm:px-3 py-2 rounded-xl hover:bg-gray-100 transition-colors">
               Learn More
             </button>
@@ -48,12 +50,16 @@ export default function HeroSection() {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="/login">
             <button className="bg-blue-900 text-white px-3 sm:px-4 py-2 rounded-xl hover:bg-blue-700 transition-colors font-semibold">
-              Get Started
+              Login
             </button>
+            </a>
+            <a href="/signup">
             <button className="bg-gray-200 text-blue-900 px-3 sm:px-4 py-2 rounded-xl hover:bg-gray-300 transition-colors font-semibold">
               Sign Up
             </button>
+            </a>
           </div>
         </div>
       </section>

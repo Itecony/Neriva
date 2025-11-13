@@ -25,38 +25,53 @@ const Login = () => {
     setLoading(true);
 
     try {
+      // Login returns { token, user }
       const response = await api.login({
         email: form.email,
         password: form.password,
       });
 
-      console.log("Login successful:", response);
+      console.log("✅ Login successful");
+      console.log("User from login:", response.user);
 
-      // Check if user has completed onboarding (check if they have role and interests)
-      const profile = await api.getProfile();
-      
-      // If user hasn't completed onboarding (no role or interests), show modal
-      if (!profile.role || !profile.interests || profile.interests.length === 0) {
+      // According to docs, login response includes everything in user object
+      const user = response.user;
+
+      // Check if user has completed onboarding
+      // According to docs: user has role and interests fields
+      const hasRole = user.role && user.role !== '';
+      const hasInterests = Array.isArray(user.interests) && user.interests.length > 0;
+
+      console.log("Role:", user.role);
+      console.log("Interests:", user.interests);
+      console.log("Has role?", hasRole);
+      console.log("Has interests?", hasInterests);
+ 
+      if (!hasRole || !hasInterests) {
+        console.log("⚠️ User needs onboarding - showing modal");
         setShowModal(true);
       } else {
-        // User has already completed onboarding, go directly to dashboard
+        console.log("✅ User completed onboarding - navigating to dashboard");
         navigate("/dashboard");
       }
+
     } catch (err) {
       setError(err.message || "Login failed. Please try again.");
-      console.error("Login error:", err);
+      console.error("❌ Login error:", err);
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleAuth = () => {
-    api.googleAuth();
+    // Redirect to Google OAuth
+    window.location.href = 'https://itecony-neriva-backend.onrender.com/api/auth/google';
   };
 
   const handleModalClose = () => {
+    // Simply close modal and navigate to dashboard
+    // No need to save anything - backend already has the data
     setShowModal(false);
-    // After onboarding is complete, navigate to dashboard
     navigate("/dashboard");
   };
 
@@ -131,7 +146,11 @@ const Login = () => {
       </AuthCard>
 
       {/* Onboarding Modal */}
-      <OnboardingModal isOpen={showModal} onClose={handleModalClose} />
+      <OnboardingModal
+        isOpen={showModal}
+        onClose={handleModalClose}
+        existingData={null} // First time, no existing data
+      />
     </AuthLayout>
   );
 };

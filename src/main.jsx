@@ -1,7 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom';
-
+import 'prismjs/themes/prism-tomorrow.css'
 import './App.css'
 import App from './App.jsx'
 

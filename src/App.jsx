@@ -7,7 +7,7 @@ import Signup from "./UserDetail/Signup";
 import Register from "./UserDetail/Register";
 import MFA from "./UserDetail/MFA";
 import ForgotPassword from "./UserDetail/ForgotPassword";
-import UserLayout from "./Pages/User/UserLayout.jsx"
+import UserLayout from "./Pages/User/ReUsable/UserLayout.jsx";
 
 // Import your user pages
 import Home from "./Pages/User/Home/Home.jsx";
@@ -20,9 +20,6 @@ import Dreamboard from "./Pages/User/Dreamboard/Dreamboard.jsx";
 // import Networking from "./Pages/User/Networking";
 // import Settings from "./Pages/User/Settings";
 
-
-
-// import Dashboard from "./Pages/Dashboard";
 import LandingPage from "./Pages/LandingPage/LandingPage";
 
 function App() {

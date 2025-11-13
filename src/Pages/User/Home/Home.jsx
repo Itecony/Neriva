@@ -1,12 +1,18 @@
 import { useState, useEffect } from 'react';
 import { Hand, MessageSquare, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import PostModal from '../ReUsable/PostModal/PostModal';
+import OnboardingModal from '../../../UserDetail/UserOnboarding'
 
 export default function Home() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentInterestIndex, setCurrentInterestIndex] = useState(0);
-  
+  // const [showMessageModal, setShowMessageModal] = useState(false);
+  // const [selectedRecipient, setSelectedRecipient] = useState('');
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+  const [showPostModal, setShowPostModal] = useState(false);
+
   const ideas = [
     {
       title: 'REST and GraphQL',
@@ -28,15 +34,16 @@ export default function Home() {
     }
   ];
 
+
   useEffect(() => {
     fetchProfile();
   }, []);
 
   const fetchProfile = async () => {
     try {
-      // API call to get profile
       const token = localStorage.getItem('authToken');
-      const response = await fetch('https://itecony-neriva-backend.onrender.com/api/profile', {
+      
+      const response = await fetch('https://itecony-neriva-backend.onrender.com/api/users/profile/', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -48,24 +55,45 @@ export default function Home() {
         throw new Error('Failed to fetch profile');
       }
 
+      // According to docs, profile returns user data directly (no wrapper)
       const data = await response.json();
+      
+      console.log('📦 Profile data:', data);
+      console.log('Role:', data.role);
+      console.log('Interests:', data.interests);
+      
       setProfile(data);
       setLoading(false);
+      
     } catch (err) {
-      console.error("Failed to fetch profile:", err);
+      console.error("❌ Failed to fetch profile:", err);
       setError(err.message);
       setLoading(false);
       
-      // Redirect to login if unauthorized
       if (err.message.includes('unauthorized') || err.message.includes('token')) {
         window.location.href = '/login';
       }
     }
   };
 
+  // const handleSendMessageClick = (recipientName) => {
+  //   setSelectedRecipient(recipientName);
+  //   setShowMessageModal(true);
+  // };
+
+  const handlePostIdea = () => {
+    setShowPostModal(true);
+  };
+
+  const handlePostSaved = (newPost) => {
+    console.log('✅ Post created:', newPost);
+    // Optionally refresh data or show success message
+    setShowPostModal(false);
+  };
+
   const nextInterest = () => {
     if (profile?.interests && profile.interests.length > 0) {
-      setCurrentInterestIndex((prev) => 
+      setCurrentInterestIndex((prev) =>
         prev === profile.interests.length - 1 ? 0 : prev + 1
       );
     }
@@ -73,10 +101,20 @@ export default function Home() {
 
   const prevInterest = () => {
     if (profile?.interests && profile.interests.length > 0) {
-      setCurrentInterestIndex((prev) => 
+      setCurrentInterestIndex((prev) =>
         prev === 0 ? profile.interests.length - 1 : prev - 1
       );
     }
+  };
+
+  const handleAddInterest = () => {
+    setShowOnboardingModal(true);
+  };
+
+  const handleOnboardingClose = () => {
+    setShowOnboardingModal(false);
+    setCurrentInterestIndex(0);
+    fetchProfile();
   };
 
   if (loading) {
@@ -106,12 +144,16 @@ export default function Home() {
     );
   }
 
-  const userName = profile?.firstName || profile?.name || 'USER';
-  const userInterests = profile?.interests || [];
+  // Extract values from profile (according to docs)
+  const userName = profile?.firstName || profile?.username || 'USER';
+  // const userRole = profile?.role || 'Not set';
+  const userInterests = Array.isArray(profile?.interests) ? profile.interests : [];
   const currentProjects = profile?.currentProjects || 0;
+
 
   return (
     <div className="max-w-7xl mx-auto">
+
       {/* Header Section */}
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-2">
@@ -123,10 +165,15 @@ export default function Home() {
         <div className="flex items-center justify-between">
           <p className="text-gray-600">Post Ideas, Innovations. Ask Questions and Get solutions</p>
           <div className="flex gap-3">
-            <button className="text-blue-600 hover:text-blue-700 font-medium">
-              Send message ...
+            <button 
+              onClick={handlePostIdea}
+              className="text-black text-sm px-4 py-2 bg-white rounded-xl hover:text-blue-700 font-semibold"
+            >
+              Ideas? ...
             </button>
-            <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+            <button 
+              onClick={handlePostIdea}
+              className="bg-blue-600 text-sm text-white px-2 py-2 rounded-xl hover:bg-blue-700 transition-colors font-semibold">
               Post Idea
             </button>
           </div>
@@ -177,10 +224,15 @@ export default function Home() {
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-gray-900">Interests</h3>
-            <button className="text-gray-600 hover:text-gray-900">
+            <button
+              onClick={handleAddInterest}
+              className="text-gray-600 hover:text-gray-900 transition-colors"
+              title="Add or edit interests"
+            >
               <Plus className="w-5 h-5" />
             </button>
           </div>
+          
           <div className="mb-3">
             {userInterests.length > 0 ? (
               <span className="inline-block bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
@@ -192,9 +244,10 @@ export default function Home() {
               </span>
             )}
           </div>
+          
           {userInterests.length > 1 && (
             <div className="flex items-center justify-between">
-              <button 
+              <button
                 onClick={prevInterest}
                 className="text-gray-600 hover:text-gray-900 transition-colors"
                 aria-label="Previous interest"
@@ -203,15 +256,15 @@ export default function Home() {
               </button>
               <div className="flex gap-1">
                 {userInterests.map((_, index) => (
-                  <div 
+                  <div
                     key={index}
-                    className={`w-1.5 h-1.5 rounded-full ${
+                    className={`w-1.5 h-1.5 rounded-full transition-colors ${
                       index === currentInterestIndex ? 'bg-blue-600' : 'bg-gray-300'
                     }`}
                   ></div>
                 ))}
               </div>
-              <button 
+              <button
                 onClick={nextInterest}
                 className="text-gray-600 hover:text-gray-900 transition-colors"
                 aria-label="Next interest"
@@ -222,6 +275,7 @@ export default function Home() {
           )}
         </div>
       </div>
+
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -276,6 +330,32 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Message Modal
+      {showMessageModal && (
+        <MessageModal
+          recipientName={selectedRecipient}
+          onClose={() => setShowMessageModal(false)}
+        />
+      )} */}
+
+      {/* Onboarding Modal */}
+      {showOnboardingModal && (
+        <OnboardingModal
+          isOpen={showOnboardingModal}
+          onClose={handleOnboardingClose}
+          existingData={profile}
+        />
+      )}
+
+      {/* Post Idea Modal - ADD THIS */}
+      {showPostModal && (
+        <PostModal
+          mode="create"
+          onClose={() => setShowPostModal(false)}
+          onSave={handlePostSaved}
+        />
+      )}
     </div>
   );
 }
