@@ -26,10 +26,22 @@ function PostCard({ post, onClick }) {
       {/* Author */}
       <div className="flex items-center gap-2 mb-3">
         <div className="w-8 h-8 bg-teal-500 rounded-full flex items-center justify-center text-white font-semibold">
-          {post.author?.initials || post.author?.username?.charAt(0).toUpperCase() || 'U'}
+          {(() => {
+            const { firstName, lastName, username, initials } = post.author || {};
+            if (initials) return initials;
+            if (firstName && lastName) return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+            if (firstName) return firstName.charAt(0).toUpperCase();
+            if (lastName) return lastName.charAt(0).toUpperCase();
+            if (username) return username.charAt(0).toUpperCase();
+            return 'U';
+          })()}
         </div>
         <span className="text-sm font-medium text-gray-900">
-          {post.author?.name || post.author?.username || 'Unknown User'}
+          {(() => {
+            const { firstName, lastName, username } = post.author || {};
+            if (firstName && lastName) return `${firstName} ${lastName}`;
+            return firstName || lastName || username || 'Unknown User';
+          })()}
         </span>
       </div>
 
@@ -90,10 +102,22 @@ function TopPostCard({ post, onClick }) {
       {/* Author */}
       <div className="flex items-center gap-2 mb-2">
         <div className="w-6 h-6 bg-teal-500 rounded-full flex items-center justify-center text-white text-xs font-semibold">
-          {post.author?.initials || post.author?.username?.charAt(0).toUpperCase() || 'U'}
+          {(() => {
+            const { firstName, lastName, username, initials } = post.author || {};
+            if (initials) return initials;
+            if (firstName && lastName) return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+            if (firstName) return firstName.charAt(0).toUpperCase();
+            if (lastName) return lastName.charAt(0).toUpperCase();
+            if (username) return username.charAt(0).toUpperCase();
+            return 'U';
+          })()}
         </div>
-        <span className="text-xs font-medium text-gray-900">
-          {post.author?.name || post.author?.username || 'Unknown User'}
+        <span className="text-sm font-medium text-gray-900">
+          {(() => {
+            const { firstName, lastName, username } = post.author || {};
+            if (firstName && lastName) return `${firstName} ${lastName}`;
+            return firstName || lastName || username || 'Unknown User';
+          })()}
         </span>
       </div>
 
