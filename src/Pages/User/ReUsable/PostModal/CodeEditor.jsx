@@ -31,31 +31,18 @@ export default function CodeEditor({ code, language, onChange }) {
       {/* Code Editor */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Code *
+          Code
         </label>
         <textarea
           name="code"
           value={code}
           onChange={onChange}
           rows="16"
-          placeholder="// Your code here...
-          
-function example() {
-  console.log('Start coding!');
-}
-
-// Supports syntax highlighting for multiple languages"
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none font-mono text-sm bg-gray-900 text-gray-100"
+          className="w-full px-4 py-3 border-gray-500 border-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none font-mono text-sm bg-gray-900 text-gray-100"
           style={{ tabSize: 2 }}
           spellCheck="false"
         />
         <div className="mt-2 flex justify-between items-center">
-          <p className="text-xs text-gray-500">
-            💡 Tab key inserts spaces (2 spaces)
-          </p>
-          <p className="text-xs text-gray-400">
-            {code.length} characters
-          </p>
         </div>
       </div>
     </>

@@ -5,7 +5,6 @@ import ContentTypeToggle from './ContentTypeToggle';
 import TextEditor from './TextEditor';
 import CodeEditor from './CodeEditor';
 import MediaInput from './MediaInput';
-import TagsInput from './TagsInput';
 import CommentsSection from './CommentSection';
 import CodeDisplay from './CodeDisplay';
 import { 
@@ -125,12 +124,6 @@ export default function PostModal({
     }));
   };
 
-  const handleTagsChange = (newTags) => {
-    setFormData(prev => ({
-      ...prev,
-      tags: newTags
-    }));
-  };
 
   const handleError = (error) => {
     if (typeof error === 'string') {
@@ -195,6 +188,13 @@ export default function PostModal({
       setLoading(false);
     }
   };
+  
+  const handleTagsDetected = (detectedTags) => {
+  setFormData(prev => ({
+    ...prev,
+    tags: detectedTags
+  }));
+};
 
   const handleLikePost = async () => {
     if (!post) return;
@@ -228,97 +228,93 @@ export default function PostModal({
             onClose={onClose}
           />
 
-          <div className="p-6 space-y-6">
-            {/* Error Display */}
-            {errors.length > 0 && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-sm font-medium text-red-800 mb-2">
-                  Please fix the following errors:
-                </p>
-                <ul className="text-sm text-red-700 list-disc list-inside space-y-1">
-                  {errors.map((error, index) => (
-                    <li key={index}>{error}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Title */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Title *
-              </label>
-              <input
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleInputChange}
-                placeholder="Enter a descriptive title..."
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                maxLength={200}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                {formData.title.length}/200 characters
+          <div className="p-6 space-y-4">
+          {/* Error Display */}
+          {errors.length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-sm font-medium text-red-800 mb-2">
+                Please fix the following errors:
               </p>
+              <ul className="text-sm text-red-700 list-disc list-inside space-y-1">
+                {errors.map((error, index) => (
+                  <li key={index}>{error}</li>
+                ))}
+              </ul>
             </div>
+          )}
 
-            {/* Content Type Toggle */}
-            <ContentTypeToggle
-              contentType={contentType}
-              onToggle={handleContentTypeToggle}
+          {/* Title */}
+          {/* <div>
+            <input
+              type="text"
+              name="title"
+              value={formData.title}
+              onChange={handleInputChange}
+              placeholder="Title..."
+              className="w-full px-4 py-3 text-lg font-semibold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+              maxLength={200}
             />
+            <p className="text-xs text-gray-500 mt-1 text-right">
+              {formData.title.length}/200
+            </p>
+          </div> */}
 
-            {/* Conditional Content Input */}
-            {contentType === 'text' ? (
-              <TextEditor
-                value={formData.content}
-                onChange={handleInputChange}
-                onPaste={handleContentPaste}
+          {/* Conditional Content Input */}
+          {contentType === 'text' ? (
+            <TextEditor
+              value={formData.content}
+              onChange={handleInputChange}
+              onPaste={handleContentPaste}
+              onTagsDetected={handleTagsDetected}
+            />
+          ) : (
+            <CodeEditor
+              code={formData.code}
+              language={formData.codeLanguage}
+              onChange={handleInputChange}
+            />
+          )}
+
+          {/* Content Type Toggle and Media Input - Side by Side */}
+          <div className="flex justify-between items-start">
+            <div className="flex-shrink-0">
+              <ContentTypeToggle
+                contentType={contentType}
+                onToggle={handleContentTypeToggle}
               />
-            ) : (
-              <CodeEditor
-                code={formData.code}
-                language={formData.codeLanguage}
-                onChange={handleInputChange}
+            </div>
+            
+            <div className="flex-shrink-0">
+              <MediaInput
+                images={formData.images}
+                video={formData.video}
+                onImagesChange={handleImagesChange}
+                onVideoChange={handleVideoChange}
+                onError={handleError}
               />
-            )}
-
-            {/* Media Input */}
-            <MediaInput
-              images={formData.images}
-              video={formData.video}
-              onImagesChange={handleImagesChange}
-              onVideoChange={handleVideoChange}
-              onError={handleError}
-            />
-
-            {/* Tags */}
-            <TagsInput
-              tags={formData.tags}
-              onChange={handleTagsChange}
-              onError={handleError}
-            />
-
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={loading}
-                className="px-6 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={loading}
-                className="px-6 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors disabled:bg-teal-300"
-              >
-                {loading ? 'Saving...' : mode === 'edit' ? 'Update Post' : 'Create Post'}
-              </button>
             </div>
           </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              className="px-6 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={loading}
+              className="px-6 py-2 bg-gradient-to-b from-teal-500 via-cyan-600 to-blue-700 hover:brightness-110 text-white rounded-lg transition-colors disabled:bg-teal-300"
+            >
+              {loading ? 'Saving...' : mode === 'edit' ? 'Update Post' : 'Create Post'}
+            </button>
+          </div>
+        </div>
         </div>
       </div>
     );

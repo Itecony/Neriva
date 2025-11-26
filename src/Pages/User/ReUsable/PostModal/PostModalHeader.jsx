@@ -40,8 +40,8 @@ export default function PostModalHeader({ mode, post, onEdit, onClose, isEditMod
 
   if (isEditMode) {
     return (
-      <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex justify-between items-center z-10">
-        <h2 className="text-xl font-bold text-gray-900">
+      <div className="sticky top-0 bg-white border-b border-gray-200 p-2 flex justify-between items-center z-10">
+        <h2 className="text-lg font-bold text-black">
           {mode === 'edit' ? 'Edit Post' : 'Create New Post'}
         </h2>
         <button
