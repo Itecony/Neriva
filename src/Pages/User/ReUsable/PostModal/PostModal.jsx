@@ -244,7 +244,7 @@ export default function PostModal({
           )}
 
           {/* Title */}
-          {/* <div>
+          <div>
             <input
               type="text"
               name="title"
@@ -257,7 +257,7 @@ export default function PostModal({
             <p className="text-xs text-gray-500 mt-1 text-right">
               {formData.title.length}/200
             </p>
-          </div> */}
+          </div>
 
           {/* Conditional Content Input */}
           {contentType === 'text' ? (
