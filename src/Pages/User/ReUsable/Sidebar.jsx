@@ -13,13 +13,13 @@ import {
 
 export default function Sidebar() {
   const menuItems = [
-    { icon: Home, label: 'Home', href: '/dashboard' },
+    // { icon: Home, label: 'Home', href: '/dashboard' },
     { icon: LayoutDashboard, label: 'Dreamboard', href: 'dashboard/dreamboard' },
     { icon: BookOpen, label: 'Resource Library', href: '/resources' },
     { icon: Users, label: 'Mentorship Hub', href: '/mentorship' },
-    { icon: Trophy, label: 'Challenges', href: '/challenges' },
-    { icon: DollarSign, label: 'Funding', href: '/funding' },
-    { icon: Briefcase, label: 'Job/ I.T. Exchange', href: '/jobs' },
+    // { icon: Trophy, label: 'Challenges', href: '/challenges' },
+    // { icon: DollarSign, label: 'Funding', href: '/funding' },
+    // { icon: Briefcase, label: 'Job/ I.T. Exchange', href: '/jobs' },
     { icon: Network, label: 'Networking hub', href: '/networking' },
   ];
 
@@ -29,7 +29,7 @@ export default function Sidebar() {
   ];
 
   return (
-    <aside className="w-64 h-full bg-gradient-to-b from-teal-500 via-cyan-600 to-blue-700 text-white flex flex-col">
+    <aside className="w-60 h-full bg-gradient-to-b from-teal-500 via-cyan-600 to-blue-700 text-white flex flex-col">
       {/* Menu Items */}
       <nav className="flex-1 py-4 overflow-y-auto">
         {menuItems.map((item, index) => {

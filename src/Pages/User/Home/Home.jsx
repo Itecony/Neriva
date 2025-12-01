@@ -1,16 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Hand, MessageSquare, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { Hand, MessageSquare } from 'lucide-react';
 import PostModal from '../ReUsable/PostModal/PostModal';
-import OnboardingModal from '../../../UserDetail/UserOnboarding'
+
 
 export default function Home() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [currentInterestIndex, setCurrentInterestIndex] = useState(0);
-  // const [showMessageModal, setShowMessageModal] = useState(false);
-  // const [selectedRecipient, setSelectedRecipient] = useState('');
-  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const [showPostModal, setShowPostModal] = useState(false);
 
   const ideas = [
@@ -76,10 +72,6 @@ export default function Home() {
     }
   };
 
-  // const handleSendMessageClick = (recipientName) => {
-  //   setSelectedRecipient(recipientName);
-  //   setShowMessageModal(true);
-  // };
 
   const handlePostIdea = () => {
     setShowPostModal(true);
@@ -90,33 +82,7 @@ export default function Home() {
     // Optionally refresh data or show success message
     setShowPostModal(false);
   };
-
-  const nextInterest = () => {
-    if (profile?.interests && profile.interests.length > 0) {
-      setCurrentInterestIndex((prev) =>
-        prev === profile.interests.length - 1 ? 0 : prev + 1
-      );
-    }
-  };
-
-  const prevInterest = () => {
-    if (profile?.interests && profile.interests.length > 0) {
-      setCurrentInterestIndex((prev) =>
-        prev === 0 ? profile.interests.length - 1 : prev - 1
-      );
-    }
-  };
-
-  const handleAddInterest = () => {
-    setShowOnboardingModal(true);
-  };
-
-  const handleOnboardingClose = () => {
-    setShowOnboardingModal(false);
-    setCurrentInterestIndex(0);
-    fetchProfile();
-  };
-
+  
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -148,7 +114,6 @@ export default function Home() {
   const userName = profile?.firstName || profile?.username || 'USER';
   // const userRole = profile?.role || 'Not set';
   const userInterests = Array.isArray(profile?.interests) ? profile.interests : [];
-  const currentProjects = profile?.currentProjects || 0;
 
 
   return (
@@ -164,42 +129,11 @@ export default function Home() {
         </div>
         <div className="flex items-center justify-between">
           <p className="text-gray-600">Post Ideas, Innovations. Ask Questions and Get solutions</p>
-          <div className="flex gap-3">
-            <button 
-              onClick={handlePostIdea}
-              className="text-black text-sm px-4 py-2 bg-white rounded-xl hover:text-blue-700 font-semibold"
-            >
-              Ideas? ...
-            </button>
-            <button 
-              onClick={handlePostIdea}
-              className="bg-blue-600 text-sm text-white px-2 py-2 rounded-xl hover:bg-blue-700 transition-colors font-semibold">
-              Post Idea
-            </button>
-          </div>
         </div>
       </div>
 
       {/* Cards Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        {/* Current Projects Card */}
-        <div className="relative h-40 rounded-xl overflow-hidden group cursor-pointer">
-          <img 
-            src="/assets/current-projects.png" 
-            alt="Current Projects" 
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-black bg-opacity-40 group-hover:bg-opacity-50 transition-all"></div>
-          <div className="absolute inset-0 p-4 flex flex-col justify-between text-white">
-            <span className="text-sm font-medium">Current Projects</span>
-            <div>
-              <div className="text-3xl font-bold mb-1">{currentProjects}</div>
-              <span className="text-sm">
-                {currentProjects === 0 ? 'Start Project...' : 'View Projects'}
-              </span>
-            </div>
-          </div>
-        </div>
 
         {/* Grow Card */}
         <div className="relative h-40 rounded-xl overflow-hidden group cursor-pointer">
@@ -220,61 +154,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Interests Card */}
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-gray-900">Interests</h3>
-            <button
-              onClick={handleAddInterest}
-              className="text-gray-600 hover:text-gray-900 transition-colors"
-              title="Add or edit interests"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
-          </div>
-          
-          <div className="mb-3">
-            {userInterests.length > 0 ? (
-              <span className="inline-block bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
-                {userInterests[currentInterestIndex]}
-              </span>
-            ) : (
-              <span className="inline-block bg-gray-100 text-gray-500 px-3 py-1 rounded-full text-sm italic">
-                No interests yet
-              </span>
-            )}
-          </div>
-          
-          {userInterests.length > 1 && (
-            <div className="flex items-center justify-between">
-              <button
-                onClick={prevInterest}
-                className="text-gray-600 hover:text-gray-900 transition-colors"
-                aria-label="Previous interest"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <div className="flex gap-1">
-                {userInterests.map((_, index) => (
-                  <div
-                    key={index}
-                    className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                      index === currentInterestIndex ? 'bg-blue-600' : 'bg-gray-300'
-                    }`}
-                  ></div>
-                ))}
-              </div>
-              <button
-                onClick={nextInterest}
-                className="text-gray-600 hover:text-gray-900 transition-colors"
-                aria-label="Next interest"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-          )}
         </div>
-      </div>
 
 
       {/* Main Content Grid */}
@@ -322,31 +202,8 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Notifications Section */}
-        <div className="bg-white border border-gray-200 rounded-xl p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Notifications</h2>
-          <div className="text-center text-gray-400 py-8">
-            <p className="text-sm">No notifications yet</p>
-          </div>
-        </div>
       </div>
 
-      {/* Message Modal
-      {showMessageModal && (
-        <MessageModal
-          recipientName={selectedRecipient}
-          onClose={() => setShowMessageModal(false)}
-        />
-      )} */}
-
-      {/* Onboarding Modal */}
-      {showOnboardingModal && (
-        <OnboardingModal
-          isOpen={showOnboardingModal}
-          onClose={handleOnboardingClose}
-          existingData={profile}
-        />
-      )}
 
       {/* Post Idea Modal - ADD THIS */}
       {showPostModal && (
