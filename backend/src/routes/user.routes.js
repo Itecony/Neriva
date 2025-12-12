@@ -2,18 +2,7 @@ const express = require('express');
 const { getProfile, updateProfile, getAllUsers, getCurrentUser } = require('../controllers/user.controller');
 const { authenticateToken } = require('../middleware/auth');
 
-// Debug: print types to help trace undefined route handlers
-console.log('[DEBUG] user.routes imports ->', {
-	authenticateToken: typeof authenticateToken,
-	getProfile: typeof getProfile,
-	updateProfile: typeof updateProfile,
-	getAllUsers: typeof getAllUsers,
-	getCurrentUser: typeof getCurrentUser
-});
-
-const router = express.Router();
-
-// @route   GET /api/profile
+const router = express.Router();// @route   GET /api/profile
 // @desc    Get user profile
 // @access  Private
 router.get('/profile', authenticateToken, getProfile);

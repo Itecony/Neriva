@@ -8,7 +8,7 @@ const getProjects = async (req, res) => {
         {
           model: User,
           as: 'owner',
-          attributes: ['id', 'username', 'avatar']
+          attributes: ['id', 'firstName', 'lastName', 'avatar']
         }
       ],
       order: [['created_at', 'DESC']]
@@ -44,7 +44,7 @@ const createProject = async (req, res) => {
         {
           model: User,
           as: 'owner',
-          attributes: ['id', 'username', 'avatar']
+          attributes: ['id', 'firstName', 'lastName', 'avatar']
         }
       ]
     });
@@ -89,7 +89,7 @@ const updateProject = async (req, res) => {
         {
           model: User,
           as: 'owner',
-          attributes: ['id', 'username', 'avatar']
+          attributes: ['id', 'firstName', 'lastName', 'avatar']
         }
       ]
     });

@@ -77,7 +77,32 @@ const User = sequelize.define('User', {
     type: DataTypes.ENUM('local', 'google'),
     defaultValue: 'local',
     allowNull: false
-  }
+  },
+  is_mentor: {
+  type: DataTypes.BOOLEAN,
+  allowNull: false,
+  defaultValue: false,
+  comment: 'Whether user is a verified mentor'
+},
+
+mentor_verified_at: {
+  type: DataTypes.DATE,
+  allowNull: true,
+  comment: 'Timestamp when user was verified as mentor'
+},
+
+can_apply_mentor: {
+  type: DataTypes.BOOLEAN,
+  allowNull: false,
+  defaultValue: true,
+  comment: 'Whether user can apply for mentor status (prevents spam applications)'
+},
+
+mentor_application_cooldown_until: {
+  type: DataTypes.DATE,
+  allowNull: true,
+  comment: 'If application rejected, user must wait until this date to reapply (30 days)'
+}
 }, {
   tableName: 'users',
   timestamps: true,

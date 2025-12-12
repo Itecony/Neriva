@@ -98,14 +98,15 @@ const login = async (req, res) => {
       token,
       user: {
         id: user.id,
-        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
         email: user.email,
         bio: user.bio,
-        role: user.role,  
+        role: user.role,
         interests: user.interests,
         avatar: user.avatar,
+        profilePicture: user.profilePicture,
         createdAt: user.createdAt
-        // Add any other fields you need
       }
     });
   } catch (error) {
