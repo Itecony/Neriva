@@ -217,34 +217,43 @@ export default function Dreamboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto">
-        {/* Header Section */}
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-2">
-            <Hand className="w-6 h-6" />
-            <h1 className="text-2xl font-bold text-gray-900">
-              WELCOME {userName.toUpperCase()}
-            </h1>
-          </div>
-          <div className="flex items-center justify-between">
-            <p className="text-gray-600">Post Ideas, Innovations. Ask Questions and Get solutions</p>
-            <div className="flex gap-3">
-              <button 
-                onClick={() => setShowCreateModal(true)}
-                className="text-black text-sm px-4 py-2 bg-white rounded-xl hover:text-blue-700 font-semibold border border-gray-200"
-              >
-                Ideas? ...
-              </button>
-              <button 
-                onClick={() => setShowCreateModal(true)}
-                className="bg-blue-600 text-sm text-white px-4 py-2 rounded-xl hover:bg-blue-700 transition-colors font-semibold"
-              >
-                Post Idea
-              </button>
+       { /* Header Section */}
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-2">
+             <button
+              onClick={() => window.location.href = '/profile'}
+              className="bg-white rounded-xl font-semibold border border-gray-200 flex items-center gap-2 hover:bg-gray-50 transition-colors"
+            >
+              <img 
+                src="/assets/Image(1).png" 
+                alt="Profile"
+                className="w-8 h-8 rounded-lg object-contain cursor-pointer"
+              />
+            </button>
+              <h1 className="text-2xl font-bold text-gray-900">
+                WELCOME {userName.toUpperCase()}
+              </h1>
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-gray-600">Post Ideas, Innovations. Ask Questions and Get solutions</p>
+              <div className="flex gap-3">
+                <button 
+            onClick={() => setShowCreateModal(true)}
+            className="text-black text-sm px-4 py-2 bg-white rounded-xl hover:text-blue-700 font-semibold border border-gray-200"
+                >
+            Ideas? ...
+                </button>
+                <button 
+            onClick={() => setShowCreateModal(true)}
+            className="bg-blue-600 text-sm text-white px-4 py-2 rounded-xl hover:bg-blue-700 transition-colors font-semibold"
+                >
+            Post Idea
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Flex Layout: Main Feed + Right Sidebar */}
+          {/* Flex Layout: Main Feed + Right Sidebar */}
         <div className="flex gap-6">
           {/* Main Feed */}
           <div className="flex-1">
@@ -276,7 +285,8 @@ export default function Dreamboard() {
           </div>
 
           {/* Right Sidebar */}
-          <div className="w-80 flex-shrink-0 space-y-6">
+           <div className="w-80 flex-shrink-0 h-screen sticky top-0">
+            <div className="space-y-6 h-full overflow-y-auto pr-2">
             {/* Grow Card */}
             <div className="relative h-40 rounded-xl overflow-hidden group cursor-pointer">
               <img 
@@ -345,6 +355,7 @@ export default function Dreamboard() {
               </button>
             </div>
           </div>
+        </div>
         </div>
       </div>
 

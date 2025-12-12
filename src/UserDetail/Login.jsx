@@ -52,7 +52,7 @@ const Login = () => {
         setShowModal(true);
       } else {
         console.log("✅ User completed onboarding - navigating to dashboard");
-        navigate("/dashboard");
+        navigate("/dreamboard");
       }
 
     } catch (err) {

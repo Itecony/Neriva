@@ -11,8 +11,10 @@ export default function UserLayout() {
       {/* Sidebar and Main Content - Below topbar */}
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-        <main className="flex-1 overflow-auto p-6 bg-gray-50">
-          <Outlet />
+        <main className="flex-1 overflow-auto bg-gray-50" data-no-padding={location.pathname === '/networking'}>
+          <div className={location.pathname === '/dreamboard/networking' ? '' : 'p-6'}>
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>
