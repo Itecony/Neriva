@@ -8,6 +8,7 @@ const Message = require('./Message');
 const Conversation = require('./Conversation');
 const ConversationParticipant = require('./ConversationParticipant');
 const PostImage = require('./PostImage');
+const Follow = require('./Follow');
 
 // New Mentor & Resource Models
 const MentorApplication = require('./MentorApplication');
@@ -44,6 +45,15 @@ Project.belongsTo(User, { foreignKey: 'user_id', as: 'owner' });
 // User <-> Notifications
 User.hasMany(Notification, { foreignKey: 'user_id', as: 'notifications' });
 Notification.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+// User <-> Follow relationships
+// User.followers = users who follow this user
+// User.following = users this user follows
+User.hasMany(Follow, { foreignKey: 'following_id', as: 'followers' });
+Follow.belongsTo(User, { foreignKey: 'following_id', as: 'followingUser' });
+
+User.hasMany(Follow, { foreignKey: 'follower_id', as: 'following' });
+Follow.belongsTo(User, { foreignKey: 'follower_id', as: 'followerUser' });
 
 // Messaging relationships (Conversation-based)
 User.belongsToMany(Conversation, {
@@ -258,6 +268,7 @@ module.exports = {
   Conversation,
   ConversationParticipant,
   PostImage,
+  Follow,
   
   // New Mentor & Resource Models
   MentorApplication,

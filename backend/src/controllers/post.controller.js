@@ -3,10 +3,19 @@ const PostImage = require('../models/PostImage');
 const path = require('path');
 const fs = require('fs');
 
-// Get all posts (UPDATED - include images)
+// Get all posts (UPDATED - include images, filter by userId if provided)
 const getPosts = async (req, res) => {
   try {
-    const posts = await Post.findAll({
+    const { userId, page = 1, limit = 20 } = req.query;
+    const offset = (page - 1) * limit;
+
+    const whereClause = {};
+    if (userId) {
+      whereClause.user_id = userId;
+    }
+
+    const { count, rows: posts } = await Post.findAndCountAll({
+      where: whereClause,
       include: [
         {
           model: User,
@@ -20,10 +29,21 @@ const getPosts = async (req, res) => {
           order: [['position', 'ASC']]
         }
       ],
-      order: [['created_at', 'DESC']]
+      order: [['created_at', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
     });
 
-    res.status(200).json({ posts });
+    res.status(200).json({
+      success: true,
+      data: posts,
+      pagination: {
+        total: count,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(count / limit)
+      }
+    });
   } catch (error) {
     console.error('Get posts error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });

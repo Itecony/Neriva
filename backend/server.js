@@ -27,6 +27,7 @@ const onboardingRoutes = require('./src/routes/onboarding.routes');
 // NEW: Import mentorship & resource routes
 const mentorRoutes = require('./src/routes/mentor.routes');
 const resourceRoutes = require('./src/routes/resource.routes');
+const followRoutes = require('./src/routes/follow.routes');
 
 // Initialize app
 const app = express();
@@ -92,6 +93,7 @@ app.use('/api', onboardingRoutes);
 // NEW: Mentorship & Resources routes
 app.use('/api', mentorRoutes);
 app.use('/api', resourceRoutes);
+app.use('/api', followRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -111,7 +113,7 @@ app.use('*', (req, res) => {
       'POST /api/onboarding/submit (protected)',
       '',
       '-- Posts & Feed --',
-      'GET /api/posts',
+      'GET /api/posts (supports ?userId=:userId&page=:page&limit=:limit)',
       'GET /api/posts/top',
       'GET /api/posts/:id',
       'POST /api/posts (protected)',
@@ -133,6 +135,14 @@ app.use('*', (req, res) => {
       '-- Notifications --',
       'GET /api/notifications (protected)',
       'POST /api/notifications/mark-read (protected)',
+      'GET /api/admin/notifications/mentor-applications (admin)',
+      '',
+      '-- Follow & Social --',
+      'POST /api/users/:userId/follow (protected)',
+      'DELETE /api/users/:userId/follow (protected)',
+      'GET /api/users/:userId/followers',
+      'GET /api/users/:userId/following',
+      'GET /api/users/:userId/follower-count',
       '',
       '-- Messages --',
       'GET /api/conversations (protected)',
