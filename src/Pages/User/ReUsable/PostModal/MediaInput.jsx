@@ -1,13 +1,14 @@
-// src/components/PostModal/MediaInput.jsx
 import { useState, useRef } from 'react';
-import { Image as ImageIcon, Video, Link as LinkIcon, Upload, X, Plus } from 'lucide-react';
-import { validateImageFiles, validateVideoFile, validateVideoDuration, sanitizeUrl } from '../../../../utils/sanitization';
+import { Image as ImageIcon, Link as LinkIcon, Upload, X, Plus } from 'lucide-react'; // Removed Video icon
+import { validateImageFiles } from '../../../../utils/sanitization'; 
+// Removed validateVideoFile, validateVideoDuration
 
-export default function MediaInput({ images, video, onImagesChange, onVideoChange, onError }) {
+// Removed video props since API doesn't support them
+export default function MediaInput({ images, onImagesChange, onError }) {
   const [imageUrls, setImageUrls] = useState(images || []);
-  const [videoUrl, setVideoUrl] = useState(video || '');
+  // const [videoUrl, setVideoUrl] = useState(video || ''); // ❌ Video not supported
   const [showMenu, setShowMenu] = useState(false);
-  const [activeMedia, setActiveMedia] = useState(null); // 'image-url', 'image-file', 'video-url', 'video-file'
+  const [activeMedia, setActiveMedia] = useState(null); // 'image-url', 'image-file'
   const menuRef = useRef(null);
 
   const handleImageUrlAdd = () => {
@@ -51,7 +52,7 @@ export default function MediaInput({ images, video, onImagesChange, onVideoChang
         validation.sanitized.map(file => {
           return new Promise((resolve) => {
             const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target.result);
+            reader.onload = (e) => resolve(e.target.result); // Base64 is supported by API
             reader.readAsDataURL(file);
           });
         })
@@ -65,30 +66,10 @@ export default function MediaInput({ images, video, onImagesChange, onVideoChang
     }
   };
 
-  const handleVideoFileUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    try {
-      validateVideoFile(file);
-      await validateVideoDuration(file, 30);
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setVideoUrl(e.target.result);
-        onVideoChange?.(e.target.result);
-      };
-      reader.readAsDataURL(file);
-    } catch (error) {
-      onError?.(error.message);
-    }
-  };
-
-  const handleVideoUrlChange = (value) => {
-    const sanitized = sanitizeUrl(value);
-    setVideoUrl(value);
-    onVideoChange?.(sanitized);
-  };
+  /* ❌ Commented out Video Handlers
+  const handleVideoFileUpload = async (e) => { ... };
+  const handleVideoUrlChange = (value) => { ... };
+  */
 
   const selectMediaType = (type) => {
     setActiveMedia(type);
@@ -129,22 +110,11 @@ export default function MediaInput({ images, video, onImagesChange, onVideoChang
             <ImageIcon className="w-4 h-4" />
             <span className="whitespace-nowrap">Upload Image</span>
           </button>
-          <button
-            type="button"
-            onClick={() => selectMediaType('video-url')}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors"
-          >
-            <LinkIcon className="w-4 h-4" />
-            <span className="whitespace-nowrap">Video URL</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => selectMediaType('video-file')}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors"
-          >
-            <Video className="w-4 h-4" />
-            <span className="whitespace-nowrap">Upload Video</span>
-          </button>
+          
+          {/* ❌ Removed Video Options
+          <button onClick={() => selectMediaType('video-url')}>...</button>
+          <button onClick={() => selectMediaType('video-file')}>...</button>
+          */}
             </div>
           )}
         </div>
@@ -257,92 +227,7 @@ export default function MediaInput({ images, video, onImagesChange, onVideoChang
         </div>
       )}
 
-      {/* Video URL Input */}
-      {activeMedia === 'video-url' && (
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-sm font-medium text-gray-700">Video URL</label>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveMedia(null);
-                setVideoUrl('');
-                onVideoChange?.('');
-              }}
-              className="text-xs text-red-500 hover:text-red-600"
-            >
-              Clear
-            </button>
-          </div>
-          <input
-            type="url"
-            value={videoUrl}
-            onChange={(e) => handleVideoUrlChange(e.target.value)}
-            placeholder="https://example.com/video.mp4"
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-          />
-          <p className="text-xs text-gray-500 mt-1">Max 30 seconds</p>
-        </div>
-      )}
-
-      {/* Video File Upload */}
-      {activeMedia === 'video-file' && (
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-sm font-medium text-gray-700">Upload Video</label>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveMedia(null);
-                setVideoUrl('');
-                onVideoChange?.('');
-              }}
-              className="text-xs text-red-500 hover:text-red-600"
-            >
-              Clear
-            </button>
-          </div>
-          
-          <input
-            type="file"
-            accept="video/mp4,video/webm,video/quicktime"
-            onChange={handleVideoFileUpload}
-            className="hidden"
-            id="video-upload"
-          />
-          
-          {!videoUrl ? (
-            <label
-              htmlFor="video-upload"
-              className="flex items-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-teal-500 transition-colors text-sm"
-            >
-              <Video className="w-5 h-5 text-gray-400" />
-              <div>
-                <span className="text-gray-700">Click to upload</span>
-                <span className="text-xs text-gray-500 block">Max 30s, 50MB</span>
-              </div>
-            </label>
-          ) : (
-            <div className="relative">
-              <video
-                src={videoUrl}
-                controls
-                className="w-full rounded-lg"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  setVideoUrl('');
-                  onVideoChange?.('');
-                }}
-                className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+      {/* ❌ Commented out Video Input UI */}
     </div>
   );
 }

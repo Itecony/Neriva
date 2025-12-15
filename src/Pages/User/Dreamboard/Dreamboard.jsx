@@ -4,6 +4,11 @@ import PostModal from '../ReUsable/PostModal/PostModal';
 
 // PostCard Component
 function PostCard({ post, onClick }) {
+  // SAFE COUNT LOGIC: Ensure we render a NUMBER, not an object/array
+  const commentCount = Array.isArray(post.comments) 
+    ? post.comments.length 
+    : (post.comments || 0);
+
   return (
     <div 
       className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
@@ -59,15 +64,15 @@ function PostCard({ post, onClick }) {
         />
       )}
 
-      {/* Stats */}
-      <div className="flex items-center gap-4 text-gray-600 text-sm">
+     <div className="flex items-center gap-4 text-gray-600 text-sm">
         <div className="flex items-center gap-1">
           <ThumbsUp className="w-4 h-4" />
           <span>{post.likes || 0}</span>
         </div>
         <div className="flex items-center gap-1">
           <MessageSquare className="w-4 h-4" />
-          <span>{post.comments || 0}</span>
+          {/* ✅ FIXED: Use commentCount instead of post.comments */}
+          <span>{commentCount}</span>
         </div>
         <div className="flex items-center gap-1">
           <Eye className="w-4 h-4" />
@@ -77,7 +82,6 @@ function PostCard({ post, onClick }) {
     </div>
   );
 }
-
 // Compact Idea Card
 function IdeaCard({ idea, onClick }) {
   return (
@@ -167,7 +171,7 @@ export default function Dreamboard() {
     }
   };
 
-  const fetchPosts = async () => {
+const fetchPosts = async () => {
     try {
       const token = localStorage.getItem('authToken');
       const response = await fetch('https://itecony-neriva-backend.onrender.com/api/posts?page=1&limit=10', {
@@ -178,7 +182,22 @@ export default function Dreamboard() {
       
       if (response.ok) {
         const data = await response.json();
-        setPosts(data.posts || []);
+        
+        // 🔍 DEBUG: Look at this log in your console!
+        console.log("Feed API Response:", data); 
+
+        // ✅ ROBUST FIX: Check all common places for the array
+        let postsArray = [];
+        
+        if (Array.isArray(data)) {
+            postsArray = data;                 // It's a direct array
+        } else if (Array.isArray(data.posts)) {
+            postsArray = data.posts;           // It's inside .posts
+        } else if (Array.isArray(data.data)) {
+            postsArray = data.data;            // It's inside .data (Common for pagination)
+        }
+
+        setPosts(postsArray);
       }
     } catch (error) {
       console.error('Failed to fetch posts:', error);
@@ -186,7 +205,6 @@ export default function Dreamboard() {
       setLoading(false);
     }
   };
-
   const fetchTopPosts = async () => {
     try {
       const token = localStorage.getItem('authToken');
@@ -204,11 +222,33 @@ export default function Dreamboard() {
       console.error('Failed to fetch top posts:', error);
     }
   };
+  
+const handlePostSaved = (newPost) => {
+    // 1. Manually add the new post to the TOP of the list immediately
+    setPosts((prevPosts) => {
+      // If the API didn't return author details, attach current profile
+      const postWithAuthor = {
+        ...newPost,
+        author: newPost.author || profile || { 
+          firstName: 'You', 
+          lastName: '', 
+          username: 'Me' 
+        },
+        // Ensure stats are initialized to 0 to prevent "NaN" errors
+        likes: 0,
+        comments: 0,
+        views: 0
+      };
+      
+      return [postWithAuthor, ...prevPosts];
+    });
 
-  const handlePostSaved = (newPost) => {
+    // 2. Close the modal
+    setShowCreateModal(false);
+
+    // 3. Still fetch in background to sync with server (optional but recommended)
     fetchPosts();
     fetchTopPosts();
-    setShowCreateModal(false);
   };
 
   const userName = profile?.firstName || profile?.username || 'USER';
@@ -285,58 +325,48 @@ export default function Dreamboard() {
           </div>
 
           {/* Right Sidebar */}
-           <div className="w-80 flex-shrink-0 h-screen sticky top-0">
+          <div className="w-80 flex-shrink-0 h-screen sticky top-0">
             <div className="space-y-6 h-full overflow-y-auto pr-2">
-            {/* Grow Card */}
-            <div className="relative h-40 rounded-xl overflow-hidden group cursor-pointer">
-              <img 
-                src="/assets/grow-communities.png" 
-                alt="Grow" 
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-black bg-opacity-40 group-hover:bg-opacity-50 transition-all"></div>
-              <div className="absolute inset-0 p-4 flex flex-col justify-between text-white">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">Grow</span>
-                  <span className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></span>
-                </div>
-                <div>
-                  <span className="text-sm">Explore communities...</span>
-                </div>
-              </div>
-            </div>
+              
+              {/* Top Posts */}
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <h3 className="font-bold text-gray-900 mb-3">Top Posts</h3>
+                <div className="space-y-3">
+                  {topPosts.slice(0, 3).map((post) => {
+                    // ✅ FIX: Calculate comment count safely inside the map
+                    const commentCount = Array.isArray(post.comments) 
+                      ? post.comments.length 
+                      : (post.comments || 0);
 
-            {/* Top Posts */}
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <h3 className="font-bold text-gray-900 mb-3">Top Posts</h3>
-              <div className="space-y-3">
-                {topPosts.slice(0, 3).map((post) => (
-                  <div 
-                    key={post.id}
-                    className="cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
-                    onClick={() => setSelectedPost(post)}
-                  >
-                    <h4 className="text-sm font-medium text-gray-900 line-clamp-2 mb-1">
-                      {post.title}
-                    </h4>
-                    <div className="flex items-center gap-2 text-xs text-gray-600">
-                      <div className="flex items-center gap-1">
-                        <ThumbsUp className="w-3 h-3" />
-                        <span>{post.likes || 0}</span>
+                    return (
+                      <div 
+                        key={post.id}
+                        className="cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
+                        onClick={() => setSelectedPost(post)}
+                      >
+                        <h4 className="text-sm font-medium text-gray-900 line-clamp-2 mb-1">
+                          {post.title}
+                        </h4>
+                        <div className="flex items-center gap-2 text-xs text-gray-600">
+                          <div className="flex items-center gap-1">
+                            <ThumbsUp className="w-3 h-3" />
+                            <span>{post.likes || 0}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <MessageSquare className="w-3 h-3" />
+                            {/* ✅ USE THE SAFE COUNT HERE */}
+                            <span>{commentCount}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <MessageSquare className="w-3 h-3" />
-                        <span>{post.comments || 0}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                    );
+                  })}
+                </div>
+                <button className="text-blue-600 hover:text-blue-700 text-sm font-medium mt-3 w-full text-center">
+                  View more
+                </button>
               </div>
-              <button className="text-blue-600 hover:text-blue-700 text-sm font-medium mt-3 w-full text-center">
-                View more
-              </button>
-            </div>
-
+              
             {/* Top Ideas */}
             <div className="bg-white border border-gray-200 rounded-xl p-4">
               <h3 className="font-bold text-gray-900 mb-3">Top Ideas for You</h3>

@@ -49,7 +49,7 @@ export default function Footer() {
           <div>
             <h3 className="text-sm font-bold mb-4">Resources</h3>
             <ul className="space-y-3">
-              <li>
+              {/* <li>
                 <a href="/hackbar" className="text-sm text-white hover:text-white transition-colors">
                   Hackbar
                 </a>
@@ -63,17 +63,22 @@ export default function Footer() {
                 <a href="/classes" className="text-sm text-white hover:text-white transition-colors">
                   Classes
                 </a>
+              </li> */}
+              <li>
+                <a href="/dreamboard/mentorship" className="text-sm text-white hover:text-white transition-colors">
+                  Mentorship
+                </a>
               </li>
               <li>
-                <a href="/mentorship" className="text-sm text-white hover:text-white transition-colors">
-                  Mentorship
+                <a href="/dreamboard/resources" className="text-sm text-white hover:text-white transition-colors">
+                  Resource Library
                 </a>
               </li>
             </ul>
           </div>
 
           {/* Community Links */}
-          <div>
+          {/* <div>
             <h3 className="text-sm font-bold mb-4">Community</h3>
             <ul className="space-y-3">
               <li>
@@ -87,7 +92,7 @@ export default function Footer() {
                 </a>
               </li>
             </ul>
-          </div>
+          </div> */}
         </div>
           {/* Newsletter Section */}
           <div className="flex flex-col sm:flex-col justify-between items-start sm:items-center gap-6">
@@ -120,21 +125,21 @@ export default function Footer() {
           {/* Social Media Icons */}
           <div className="flex gap-4">
             <a 
-              href="#" 
+              href="https://www.facebook.com/share/17qBvVfZ1Q/" 
               className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-700 hover:bg-gray-600 transition-colors"
               aria-label="Facebook"
             >
               <Facebook className="w-4 h-4" />
             </a>
             <a 
-              href="#" 
+              href="https://x.com/_itecony?t=JSjdR5lqv1RhAB-SS2qiaQ&s=09" 
               className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-700 hover:bg-gray-600 transition-colors"
               aria-label="Twitter"
             >
               <Twitter className="w-4 h-4" />
             </a>
             <a 
-              href="#" 
+              href="https://www.instagram.com/itecony_solutions?igsh=MTBhbTM2ejBkdGp1bg==" 
               className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-700 hover:bg-gray-600 transition-colors"
               aria-label="Instagram"
             >

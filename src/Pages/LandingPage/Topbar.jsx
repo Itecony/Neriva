@@ -29,13 +29,13 @@ export default function Topbar() {
               <a href="/" className="text-black font-semibold hover:underline transition-colors">
                 Home
               </a>
-              <a href="/communities" className="text-black font-semibold hover:underline transition-colors">
+              {/* <a href="/communities" className="text-black font-semibold hover:underline transition-colors">
                 Communities
               </a>
               <a href="/projects" className="text-black font-semibold hover:underline transition-colors">
                 Projects
-              </a>
-              <a href="/resources" className="flex items-center gap-1 text-black font-semibold hover:underline transition-colors">
+              </a> */}
+              <a href="/dreamboard/resources" className="flex items-center gap-1 text-black font-semibold hover:underline transition-colors">
                 Resources
                 <ChevronRight className="w-4 h-4" />
               </a>
@@ -124,7 +124,7 @@ export default function Topbar() {
                 >
                   Home
                 </a>
-                <a
+                {/* <a
                   href="/communities"
                   className="text-gray-900 hover:text-gray-600 transition-colors py-2"
                   onClick={toggleSidebar}
@@ -137,9 +137,9 @@ export default function Topbar() {
                   onClick={toggleSidebar}
                 >
                   Projects
-                </a>
+                </a> */}
                 <a
-                  href="/resources"
+                  href="/dreamboard/resources"
                   className="flex items-center gap-1 text-gray-900 hover:text-gray-600 transition-colors py-2"
                   onClick={toggleSidebar}
                 >

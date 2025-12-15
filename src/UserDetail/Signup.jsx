@@ -114,14 +114,14 @@ const Signup = () => {
           />
         </form>
 
-        <button
+        {/* <button
           type="button"
           onClick={handleGoogleAuth}
           className="flex items-center justify-center mt-3 gap-2 border border-gray-300 rounded-lg px-4 py-2 w-full hover:bg-gray-100 transition"
         >
           <FcGoogle className="text-2xl" />
           <span className="font-semibold">Continue with Google</span>
-        </button>
+        </button> */}
       </AuthCard>
     </AuthLayout>
   );

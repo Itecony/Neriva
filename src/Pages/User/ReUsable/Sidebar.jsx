@@ -42,8 +42,8 @@ export default function Sidebar() {
 
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dreamboard', href: '/dreamboard' },
-    { icon: BookOpen, label: 'Resource Library', href: '/resources' },
-    { icon: Users, label: 'Mentorship Hub', href: '/mentorship' },
+    { icon: BookOpen, label: 'Resource Library', href: '/dreamboard/resources' },
+    { icon: Users, label: 'Mentorship Hub', href: '/dreamboard/mentorship' },
     { icon: Network, label: 'Networking hub', href: '/dreamboard/networking' },
   ];
 

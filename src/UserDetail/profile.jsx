@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { MessageCircle, MapPin, Briefcase, Plus, ChevronLeft, ChevronRight, Calendar, Settings } from 'lucide-react';
+// Ensure your PostModal is the FIXED version to prevent crashes
 import PostModal from '../Pages/User/ReUsable/PostModal/PostModal';
 import OnboardingModal from '../UserDetail/UserOnboarding';
 
@@ -26,17 +27,14 @@ export default function Profile({ userId = null, isPersonal = true }) {
     try {
       const token = localStorage.getItem('authToken');
 
-      // 1. Check if we actually have a token
       if (!token) {
         throw new Error("No 'authToken' found in localStorage. Please log in again.");
       }
 
-      // 2. Remove trailing slashes from URLs (common cause of 404 errors)
+      // Determine endpoint based on whether we are viewing our own profile or someone else's
       const endpoint = userId 
         ? `https://itecony-neriva-backend.onrender.com/api/users/${userId}/profile`
         : `https://itecony-neriva-backend.onrender.com/api/users/profile`;
-
-      console.log("Attempting to fetch:", endpoint); // DEBUG LOG
 
       const response = await fetch(endpoint, {
         method: 'GET',
@@ -46,35 +44,33 @@ export default function Profile({ userId = null, isPersonal = true }) {
         }
       });
 
-      // 3. If request fails, read the TEXT response from server to see why
       if (!response.ok) {
         const errorBody = await response.text(); 
-        console.error("Server Error Response:", errorBody); // DEBUG LOG
-        
-        // Throw a descriptive error
         throw new Error(`Server Error (${response.status}): ${errorBody || response.statusText}`);
       }
       
       const data = await response.json();
-      console.log("Profile Data Received:", data); // DEBUG LOG
       setProfile(data);
       
-      // Fetch posts for this user
-      // Ensure we have a valid ID before fetching posts
+      // Fetch posts using the retrieved profile ID
       const profileId = data._id || data.id;
       if (profileId) {
         await fetchPosts(profileId);
       } else {
         console.warn("Profile loaded, but no ID found to fetch posts.");
+        setPosts([]);
+        setFilteredPosts([]);
       }
 
     } catch (err) {
       setError(err.message);
-      console.error('FULL ERROR DETAILS:', err);
+      console.error('Profile Fetch Error:', err);
     } finally {
       setLoading(false);
     }
   };
+
+  // ✅ FIXED & ROBUST FETCH POSTS FUNCTION
   const fetchPosts = async (profileId) => {
     try {
       const token = localStorage.getItem('authToken');
@@ -90,12 +86,23 @@ export default function Profile({ userId = null, isPersonal = true }) {
       if (!response.ok) throw new Error('Failed to fetch posts');
       
       const data = await response.json();
-      const userPosts = Array.isArray(data) ? data : data.posts || [];
+      
+      // Handle various API response structures
+      let userPosts = [];
+      if (Array.isArray(data)) {
+        userPosts = data;
+      } else if (Array.isArray(data.posts)) {
+        userPosts = data.posts;
+      } else if (Array.isArray(data.data)) {
+        userPosts = data.data; // Common for paginated responses
+      }
+
       setPosts(userPosts);
       filterPosts(userPosts, 'all');
     } catch (err) {
       console.error('Error fetching posts:', err);
       setPosts([]);
+      setFilteredPosts([]);
     }
   };
 
@@ -103,9 +110,11 @@ export default function Profile({ userId = null, isPersonal = true }) {
     let filtered = postList;
     
     if (type === 'posts') {
+      // Filter for standard posts (has content, not explicitly a code post)
       filtered = postList.filter(post => post.content && !post.isCodePost);
     } else if (type === 'code') {
-      filtered = postList.filter(post => post.isCodePost);
+      // Filter for code posts (checking isCodePost or if code_snippets array exists/is populated)
+      filtered = postList.filter(post => post.isCodePost || (post.code_snippets && post.code_snippets.length > 0));
     }
     
     setFilteredPosts(filtered);
@@ -127,7 +136,14 @@ export default function Profile({ userId = null, isPersonal = true }) {
   };
 
   const handlePostSave = (updatedPost) => {
+    // Manually update the local list so we don't have to re-fetch
     const updated = posts.map(p => p.id === updatedPost.id ? updatedPost : p);
+    
+    // If it's a new post (doesn't exist in current list), add it to the top
+    if (!posts.find(p => p.id === updatedPost.id)) {
+        updated.unshift(updatedPost);
+    }
+    
     setPosts(updated);
     filterPosts(updated, filterType);
   };
@@ -141,7 +157,6 @@ export default function Profile({ userId = null, isPersonal = true }) {
     
     try {
       const token = localStorage.getItem('authToken');
-      // Create or fetch conversation with user
       const response = await fetch(
         'https://itecony-neriva-backend.onrender.com/api/conversations',
         {
@@ -159,7 +174,6 @@ export default function Profile({ userId = null, isPersonal = true }) {
       if (!response.ok) throw new Error('Failed to initiate conversation');
       
       const conversation = await response.json();
-      // Navigate to messaging (you'd implement actual navigation here)
       window.location.href = `/networking-hub/messages/${conversation.id}`;
     } catch (err) {
       console.error('Error initiating conversation:', err);
@@ -213,7 +227,7 @@ export default function Profile({ userId = null, isPersonal = true }) {
   }
 
   const userInterests = profile?.interests || [];
-
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4">
       <div className="max-w-6xl mx-auto">

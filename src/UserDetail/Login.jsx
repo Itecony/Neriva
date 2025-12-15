@@ -134,7 +134,7 @@ const Login = () => {
           <div className="flex-grow border-t border-white"></div>
         </div>
 
-        <div className="flex w-full mt-2 justify-center">
+        {/* <div className="flex w-full mt-2 justify-center">
           <button
             type="button"
             onClick={handleGoogleAuth}
@@ -142,7 +142,7 @@ const Login = () => {
           >
             <FcGoogle className="text-2xl" />
           </button>
-        </div>
+        </div> */}
       </AuthCard>
 
       {/* Onboarding Modal */}
