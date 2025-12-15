@@ -119,9 +119,35 @@ const getCurrentUser = async (req, res) => {
   }
 };
 
+// @desc    Get user by id
+// @route   GET /api/users/:id
+// @access  Private
+const getUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ message: 'User id is required' });
+    }
+
+    const user = await User.findByPk(id, {
+      attributes: { exclude: ['password'] }
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error('Get user by id error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
 module.exports = {
   getProfile,
   updateProfile,
   getAllUsers,
-  getCurrentUser
+  getCurrentUser,
+  getUserById
 };
