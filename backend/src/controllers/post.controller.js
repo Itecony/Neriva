@@ -423,12 +423,49 @@ const uploadImage = async (req, res) => {
       return res.status(400).json({ message: 'No image file provided' });
     }
 
-    // Return the file path/URL
+    const { postId } = req.body;
+    if (!postId) {
+      return res.status(400).json({ message: 'Post ID is required' });
+    }
+
+    // Verify post exists and belongs to user
+    const post = await Post.findOne({
+      where: { id: postId }
+    });
+
+    if (!post) {
+      // Clean up uploaded file if post doesn't exist
+      fs.unlinkSync(path.join(__dirname, '../../uploads', req.file.filename));
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    if (post.user_id !== req.user.id) {
+      // Clean up uploaded file if unauthorized
+      fs.unlinkSync(path.join(__dirname, '../../uploads', req.file.filename));
+      return res.status(403).json({ message: 'Not authorized to add images to this post' });
+    }
+
+    // Get the highest position for this post
+    const maxPosition = await PostImage.max('position', {
+      where: { post_id: postId }
+    }) || -1;
+
+    // Create PostImage record
     const imageUrl = `uploads/${req.file.filename}`;
-    
-    res.status(200).json({
+    const postImage = await PostImage.create({
+      post_id: postId,
+      image_url: imageUrl,
+      position: maxPosition + 1
+    });
+
+    res.status(201).json({
       message: 'Image uploaded successfully',
-      image_url: imageUrl
+      image: {
+        id: postImage.id,
+        post_id: postImage.post_id,
+        image_url: postImage.image_url,
+        position: postImage.position
+      }
     });
   } catch (error) {
     console.error('Upload image error:', error);
@@ -507,6 +544,34 @@ const deleteImage = async (req, res) => {
   }
 };
 
+// Get all images for a post
+const getPostImages = async (req, res) => {
+  try {
+    const { postId } = req.params;
+
+    const post = await Post.findByPk(postId);
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    const images = await PostImage.findAll({
+      where: { post_id: postId },
+      order: [['position', 'ASC']]
+    });
+
+    res.json({
+      count: images.length,
+      images
+    });
+  } catch (error) {
+    console.error('Get post images error:', error);
+    res.status(500).json({ 
+      message: 'Failed to retrieve images',
+      error: error.message 
+    });
+  }
+};
+
 module.exports = {
   getPosts,
   getTopPosts,
@@ -518,6 +583,7 @@ module.exports = {
   viewPost,
   addComment,
   getPostComments,
-  uploadImage,      // NEW
-  deleteImage       // NEW
+  uploadImage,
+  deleteImage,
+  getPostImages
 };

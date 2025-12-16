@@ -48,7 +48,9 @@ router.post('/posts/:id/view', postController.viewPost);
 router.post('/posts/:id/comment', authenticateToken, postController.addComment);
 
 // NEW: Image management routes
+// POST /posts/upload-image requires: multipart form data with 'image' file + 'postId' in body
 router.post('/posts/upload-image', authenticateToken, upload.single('image'), postController.uploadImage);
+router.get('/posts/:postId/images', postController.getPostImages);
 router.delete('/posts/:postId/images/:imageId', authenticateToken, postController.deleteImage);
 
 module.exports = router;

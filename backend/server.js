@@ -123,7 +123,8 @@ app.use('*', (req, res) => {
       'POST /api/posts/:id/view',
       'POST /api/posts/:id/comment (protected)',
       'GET /api/posts/:id/comments',
-      'POST /api/posts/upload-image (protected)',
+      'POST /api/posts/upload-image (protected, multipart form with postId in body)',
+      'GET /api/posts/:postId/images',
       'DELETE /api/posts/:postId/images/:imageId (protected)',
       '',
       '-- Projects --',
@@ -237,7 +238,8 @@ app.listen(PORT, HOST, () => {
   console.log(`   POST /api/posts/:id/view - Increment view count`);
   console.log(`   POST /api/posts/:id/comment - Add comment (protected)`);
   console.log(`   GET  /api/posts/:id/comments - Get post comments`);
-  console.log(`   POST /api/posts/upload-image - Upload image file (protected)`);
+  console.log(`   POST /api/posts/upload-image - Upload image file (protected, multipart with postId in body)`);
+  console.log(`   GET  /api/posts/:postId/images - Get all images for post`);
   console.log(`   DEL  /api/posts/:postId/images/:imageId - Delete image (protected)`);
   console.log(`\n   🚀 Projects`);
   console.log(`   GET  /api/projects - Get all projects`);
