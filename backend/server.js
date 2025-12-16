@@ -144,6 +144,7 @@ app.use('*', (req, res) => {
       '-- Follow & Social --',
       'POST /api/users/:userId/follow (protected)',
       'DELETE /api/users/:userId/follow (protected)',
+      'GET /api/users/:userId/is-following (Protected)',
       'GET /api/users/:userId/followers',
       'GET /api/users/:userId/following',
       'GET /api/users/:userId/follower-count',

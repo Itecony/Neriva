@@ -277,10 +277,70 @@ const getFollowerCount = async (req, res) => {
   }
 };
 
+/**
+ * Check if authenticated user is following a specific user
+ * GET /api/users/:userId/is-following
+ */
+const isFollowing = async (req, res) => {
+  try {
+    const followerId = req.user.id; // Currently authenticated user
+    const { userId } = req.params; // User to check
+
+    // Validate
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID is required'
+      });
+    }
+
+    // Can't check follow status with yourself
+    if (followerId === userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot check follow status with yourself'
+      });
+    }
+
+    // Check if target user exists
+    const targetUser = await User.findByPk(userId);
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Check if following
+    const followRecord = await Follow.findOne({
+      where: {
+        follower_id: followerId,
+        following_id: userId
+      }
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        isFollowing: followRecord !== null
+      }
+    });
+
+  } catch (error) {
+    console.error('Check follow status error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error checking follow status',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   followUser,
   unfollowUser,
   getFollowers,
   getFollowing,
-  getFollowerCount
+  getFollowerCount,
+  isFollowing
 };
