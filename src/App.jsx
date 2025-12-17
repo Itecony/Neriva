@@ -44,6 +44,7 @@ function App() {
         <Route index element={<Dreamboard />} />
         <Route path="resources" element={<ResourceHub />} />
         <Route path="networking" element={<Networking />} />
+        <Route path="networking/messages/:conversationId" element={<Networking />} />
         <Route path="mentorship" element={<MentorshipHub />} />
       </Route>
 

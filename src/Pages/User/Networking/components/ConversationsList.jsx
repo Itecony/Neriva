@@ -1,27 +1,36 @@
 import { useState, useEffect } from 'react';
-import { MessageCircle, MoreVertical, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom'; // ✅ Added
+import { MessageCircle, Users, UserPlus, Search, ArrowRight } from 'lucide-react';
 
 export default function ConversationsList({ onSelectConversation, selectedConversationId }) {
+  const navigate = useNavigate(); // ✅ Initialize hook
+  const [activeTab, setActiveTab] = useState('chats'); 
   const [conversations, setConversations] = useState([]);
+  const [contacts, setContacts] = useState([]); 
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  const currentUserId = localStorage.getItem('userId');
 
   useEffect(() => {
-    fetchConversations();
-  }, []);
+    if (activeTab === 'chats') {
+      fetchConversations();
+    } else {
+      fetchContacts();
+    }
+  }, [activeTab]);
 
   const fetchConversations = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('authToken');
       const response = await fetch('https://itecony-neriva-backend.onrender.com/api/conversations', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
       });
 
       if (response.ok) {
         const data = await response.json();
-        setConversations(Array.isArray(data) ? data : data.conversations || []);
+        setConversations(Array.isArray(data.conversations) ? data.conversations : []);
       }
     } catch (error) {
       console.error('Error fetching conversations:', error);
@@ -30,112 +39,166 @@ export default function ConversationsList({ onSelectConversation, selectedConver
     }
   };
 
+  const fetchContacts = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('authToken');
+      
+      let targetUserId = currentUserId;
+      if (!targetUserId || targetUserId.toString().length < 10) {
+          console.log("⚠️ Invalid Local ID. Fetching real profile ID...");
+          const profileRes = await fetch('https://itecony-neriva-backend.onrender.com/api/profile', {
+             headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (profileRes.ok) {
+             const profile = await profileRes.json();
+             targetUserId = profile.id || profile._id;
+             localStorage.setItem('userId', targetUserId);
+          } else {
+             throw new Error("Could not retrieve valid User ID.");
+          }
+      }
+
+      const [followingRes, followersRes] = await Promise.all([
+        fetch(`https://itecony-neriva-backend.onrender.com/api/users/${targetUserId}/following?limit=100`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`https://itecony-neriva-backend.onrender.com/api/users/${targetUserId}/followers?limit=100`, { headers: { 'Authorization': `Bearer ${token}` } })
+      ]);
+
+      let combinedContacts = [];
+      if (followingRes.ok) combinedContacts = [...combinedContacts, ...(await followingRes.json()).data || []];
+      if (followersRes.ok) combinedContacts = [...combinedContacts, ...(await followersRes.json()).data || []];
+
+      const uniqueContacts = Array.from(
+        new Map(combinedContacts.map(user => [user.id || user._id, user])).values()
+      );
+
+      console.log("✅ Contacts Loaded:", uniqueContacts.length);
+      setContacts(uniqueContacts);
+
+    } catch (error) {
+      console.error('Error fetching contacts:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleContactClick = async (contact) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const targetId = contact.id || contact._id;
+
+      const response = await fetch('https://itecony-neriva-backend.onrender.com/api/conversations/direct', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ recipientId: targetId })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const conversation = data.conversation || data;
+        
+        onSelectConversation(conversation);
+        setActiveTab('chats');
+        
+        // ✅ Navigate to chat (triggers Networking.jsx to open chat)
+        navigate(`/dreamboard/networking/messages/${conversation.id}`);
+        
+        fetchConversations(); 
+      }
+    } catch (err) {
+      console.error("Failed to start chat", err);
+    }
+  };
+
+  // ✅ New Handler for Existing Chats
+  const handleChatClick = (conversation) => {
+    onSelectConversation(conversation);
+    // ✅ Navigate to chat URL
+    navigate(`/dreamboard/networking/messages/${conversation.id}`);
+  };
+
+  const filteredList = (activeTab === 'chats' ? conversations : contacts).filter(item => {
+    const name = activeTab === 'chats' 
+      ? (item.type === 'group' ? item.name : item.participants?.find(p => (p.id || p._id) !== currentUserId)?.firstName)
+      : item.firstName;
+    return (name || 'Unknown').toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
   return (
-    <div className="flex flex-col h-screen w-20 bg-gradient-to-b from-teal-500 via-cyan-600 to-blue-700 shadow-lg overflow-hidden">
-
-      {/* Conversations List - Vertical Icon View */}
-      <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-3">
-        {loading ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="w-6 h-6 rounded-full border-3 border-gray-700 border-t-teal-500 animate-spin"></div>
+    <div className="flex flex-col h-full w-full lg:w-80 bg-white border-r border-gray-200 shadow-sm">
+      <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
+        <div className="p-4 bg-teal-600 text-white">
+          <h2 className="font-bold text-lg">Networking</h2>
+        </div>
+        <div className="flex p-2 gap-2 bg-gray-50">
+          <button onClick={() => setActiveTab('chats')} className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === 'chats' ? 'bg-white text-teal-600 shadow-sm border' : 'text-gray-500 hover:bg-gray-200'}`}>Chats</button>
+          <button onClick={() => setActiveTab('contacts')} className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === 'contacts' ? 'bg-white text-teal-600 shadow-sm border' : 'text-gray-500 hover:bg-gray-200'}`}>Contacts</button>
+        </div>
+        <div className="px-4 pb-3 bg-gray-50">
+          <div className="relative">
+            <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+            <input type="text" placeholder={activeTab === 'chats' ? "Search messages..." : "Search contacts..."} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"/>
           </div>
-        ) : conversations.length === 0 ? (
-          <div className="flex items-center justify-center h-full p-2">
-            <div className="text-center">
-              <MessageCircle className="w-8 h-8 text-teal-300 mx-auto mb-1" />
-              <p className="text-white text-xs">No chats</p>
-            </div>
-          </div>
-        ) : (
-          conversations.map((conv) => {
-            const isGroup = conv.type === 'group';
-            const otherUser = conv.participants?.[0];
-            const isSelected = conv.id === selectedConversationId;
-            const hasUnread = conv.unreadCount > 0;
-            const hasError = conv.failedToSend;
-
-            // Get initials for user
-            const getInitials = () => {
-              if (isGroup) {
-                return conv.name?.substring(0, 2).toUpperCase() || 'GR';
-              }
-              const firstName = otherUser?.firstName?.charAt(0) || '';
-              const lastName = otherUser?.lastName?.charAt(0) || '';
-              return (firstName + lastName).toUpperCase() || 'U';
-            };
-
-            return (
-              <div key={conv.id} className="relative group">
-                <button
-                  onClick={() => onSelectConversation(conv)}
-                  className={`w-full flex flex-col items-center p-2 rounded-lg transition-colors ${
-                    isSelected
-                      ? 'bg-teal-600 bg-opacity-30 border border-teal-400'
-                      : 'hover:bg-blue-800 border border-transparent'
-                  }`}
-                >
-                  {/* Avatar or Initials */}
-                  <div className="relative">
-                    {isGroup ? (
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-cyan-400 flex items-center justify-center text-white font-semibold text-sm">
-                        <Users className="w-5 h-5" />
-                      </div>
-                    ) : otherUser?.profileImage ? (
-                      <img
-                        src={otherUser.profileImage}
-                        alt={otherUser?.firstName}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-teal-500 flex items-center justify-center text-white font-semibold text-xs">
-                        {getInitials()}
-                      </div>
-                    )}
-
-                    {/* Notification Badge */}
-                    {hasUnread && (
-                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-teal-400 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-blue-700">
-                        {conv.unreadCount > 9 ? '9' : conv.unreadCount}
-                      </div>
-                    )}
-
-                    {/* Error Badge */}
-                    {hasError && (
-                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-white text-xs border-2 border-blue-700">
-                        !
-                      </div>
-                    )}
-                  </div>
-
-                  {/* User Name - Hidden on narrow */}
-                  <p className="text-xs font-semibold text-white truncate mt-1 hidden">
-                    {isGroup ? conv.name : otherUser?.firstName}
-                  </p>
-                </button>
-
-                {/* Hover Tooltip */}
-                <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 hidden group-hover:block z-10">
-                  <div className="bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap border border-gray-700 shadow-lg">
-                    {isGroup ? conv.name : `${otherUser?.firstName} ${otherUser?.lastName}`}
-                  </div>
-                  {isGroup && (
-                    <p className="text-gray-400 text-xs text-center mt-1">{conv.memberCount} members</p>
-                  )}
-                </div>
-              </div>
-            );
-          })
-        )}
+        </div>
       </div>
 
-      {/* Bottom Actions */}
-      <div className="border-t border-blue-600 p-2 flex flex-col gap-2">
-        <button className="p-2 hover:bg-blue-800 rounded-lg transition-colors text-gray-300 hover:text-white" title="New chat">
-          <MessageCircle className="w-5 h-5 mx-auto" />
-        </button>
-        <button className="p-2 hover:bg-blue-800 rounded-lg transition-colors text-gray-300 hover:text-white" title="Settings">
-          <MoreVertical className="w-5 h-5 mx-auto" />
-        </button>
+      <div className="flex-1 overflow-y-auto">
+        {loading ? (
+          <div className="flex justify-center p-8"><div className="w-6 h-6 rounded-full border-2 border-gray-200 border-t-teal-500 animate-spin"></div></div>
+        ) : filteredList.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-40 text-gray-500 text-sm">
+            {activeTab === 'chats' ? (
+              <><MessageCircle className="w-8 h-8 mb-2 opacity-20" /><p>No active conversations</p><button onClick={() => setActiveTab('contacts')} className="mt-2 text-teal-600 font-medium hover:underline">Start a chat</button></>
+            ) : (
+              <><Users className="w-8 h-8 mb-2 opacity-20" /><p>Follow users to connect</p></>
+            )}
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {filteredList.map((item) => {
+              if (activeTab === 'chats') {
+                const conv = item;
+                const isGroup = item.type === 'group';
+                const otherUser = item.participants?.find(p => (p.id || p._id) !== currentUserId) || item.participants?.[0];
+                const displayName = isGroup ? item.name : `${otherUser?.firstName || 'User'} ${otherUser?.lastName || ''}`;
+                const image = isGroup ? null : (otherUser?.avatar || otherUser?.profileImage); 
+                const isSelected = item.id === selectedConversationId;
+
+                return (
+                  <button key={item.id} onClick={() => handleChatClick(item)} className={`w-full flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors text-left ${isSelected ? 'bg-teal-50 border-r-4 border-teal-500' : ''}`}>
+                    <div className="relative flex-shrink-0">
+                      {image ? <img src={image} className="w-10 h-10 rounded-full object-cover border" alt="" /> : <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white font-bold">{isGroup ? <Users className="w-5 h-5" /> : (displayName[0] || 'U')}</div>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className={`text-sm truncate ${isSelected ? 'font-bold text-teal-900' : 'font-medium text-gray-900'}`}>{displayName}</h3>
+                      <p className="text-xs text-gray-500 truncate">{item.messages?.[0]?.content || 'Open chat'}</p>
+                    </div>
+                  </button>
+                );
+              } else {
+                const contact = item;
+                const displayName = `${contact.firstName || 'User'} ${contact.lastName || ''}`;
+                const image = contact.profilePicture || contact.profileImage || contact.avatar; 
+
+                return (
+                  <button key={contact.id || contact._id} onClick={() => handleContactClick(contact)} className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors text-left group">
+                    <div className="relative flex-shrink-0">
+                      {image ? <img src={image} className="w-10 h-10 rounded-full object-cover border" alt="" /> : <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold group-hover:bg-teal-100 group-hover:text-teal-700">{displayName[0] || 'U'}</div>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-medium text-gray-900 truncate">{displayName}</h3>
+                      <p className="text-xs text-gray-500 truncate">Tap to message</p>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-teal-500" />
+                  </button>
+                );
+              }
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
