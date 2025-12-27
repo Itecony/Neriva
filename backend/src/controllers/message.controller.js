@@ -11,23 +11,53 @@ const getOrCreateDirectConversation = async (req, res) => {
     const { recipientId } = req.body;
     const userId = req.user.id;
 
-    // Find existing direct conversation
-    let conversation = await Conversation.findOne({
-      where: { type: 'direct' },
-      include: [{
-        model: User,
-        as: 'participants',
-        where: { id: [userId, recipientId] },
-        through: { attributes: [] }
-      }]
+    // Validate
+    if (!recipientId) {
+      return res.status(400).json({ message: 'Recipient ID is required' });
+    }
+
+    if (userId === recipientId) {
+      return res.status(400).json({ message: 'Cannot create conversation with yourself' });
+    }
+
+    // Find existing direct conversation between these 2 users
+    // Get all conversations where current user is a participant
+    const userConversations = await ConversationParticipant.findAll({
+      where: { user_id: userId },
+      attributes: ['conversation_id']
     });
 
-    if (conversation && conversation.participants.length === 2) {
-      return res.status(200).json({ conversation });
+    const conversationIds = userConversations.map(c => c.conversation_id);
+
+    if (conversationIds.length > 0) {
+      // Find direct conversation that includes the recipient
+      const existingConversation = await Conversation.findOne({
+        where: {
+          id: conversationIds,
+          type: 'direct'
+        },
+        include: [{
+          model: ConversationParticipant,
+          as: 'conversationParticipants',
+          where: { user_id: recipientId },
+          required: true
+        }]
+      });
+
+      if (existingConversation) {
+        // Verify it's only these 2 users
+        const participantCount = await ConversationParticipant.count({
+          where: { conversation_id: existingConversation.id }
+        });
+
+        if (participantCount === 2) {
+          return res.status(200).json({ conversation: existingConversation });
+        }
+      }
     }
 
     // Create new conversation
-    conversation = await Conversation.create({ type: 'direct' });
+    const conversation = await Conversation.create({ type: 'direct' });
     
     await ConversationParticipant.bulkCreate([
       { conversation_id: conversation.id, user_id: userId },
@@ -47,9 +77,18 @@ const createGroupConversation = async (req, res) => {
     const { participantIds, groupName } = req.body;
     const creatorId = req.user.id;
 
+    // Validate
+    if (!groupName || !groupName.trim()) {
+      return res.status(400).json({ message: 'Group name is required' });
+    }
+
+    if (!participantIds || participantIds.length === 0) {
+      return res.status(400).json({ message: 'At least one participant is required' });
+    }
+
     const conversation = await Conversation.create({
       type: 'group',
-      name: groupName
+      name: groupName.trim()
     });
 
     const participants = [creatorId, ...participantIds];
@@ -59,6 +98,14 @@ const createGroupConversation = async (req, res) => {
         user_id: userId
       }))
     );
+
+    // Notify all participants via WebSocket
+    const io = req.app.get('io');
+    participants.forEach(participantId => {
+      io.to(`user_${participantId}`).emit('new_conversation', {
+        conversation
+      });
+    });
 
     res.status(201).json({ conversation });
   } catch (error) {
@@ -121,6 +168,7 @@ const getMessages = async (req, res) => {
   try {
     const { conversationId } = req.params;
     const userId = req.user.id;
+    const { limit = 50, before } = req.query; // Pagination support
 
     // Verify user is participant
     const participant = await ConversationParticipant.findOne({
@@ -134,17 +182,34 @@ const getMessages = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
+    // Build query conditions
+    const whereConditions = { conversation_id: conversationId };
+    
+    // If 'before' timestamp provided, get messages before that time (for pagination)
+    if (before) {
+      whereConditions.created_at = {
+        [Op.lt]: new Date(before)
+      };
+    }
+
     const messages = await Message.findAll({
-      where: { conversation_id: conversationId },
+      where: whereConditions,
       include: [{
         model: User,
         as: 'sender',
         attributes: ['id', 'firstName', 'lastName', 'avatar']
       }],
-      order: [['created_at', 'ASC']]
+      order: [['created_at', 'DESC']],
+      limit: parseInt(limit)
     });
 
-    res.status(200).json({ messages });
+    // Reverse to get chronological order
+    const chronologicalMessages = messages.reverse();
+
+    res.status(200).json({ 
+      messages: chronologicalMessages,
+      hasMore: messages.length === parseInt(limit)
+    });
   } catch (error) {
     console.error('Get messages error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -189,6 +254,7 @@ const sendMessage = async (req, res) => {
 
     console.log('Creating message...');
     
+    // Create message
     const message = await Message.create({
       conversation_id: conversationId,
       sender_id: senderId,
@@ -197,13 +263,30 @@ const sendMessage = async (req, res) => {
 
     console.log('Message created:', message.id);
 
+    // Get full message with sender details
+    const fullMessage = await Message.findByPk(message.id, {
+      include: [{
+        model: User,
+        as: 'sender',
+        attributes: ['id', 'firstName', 'lastName', 'avatar']
+      }]
+    });
+
     // Update conversation timestamp
     await Conversation.update(
       { updated_at: new Date() },
       { where: { id: conversationId } }
     );
 
-    res.status(201).json({ message });
+    // Broadcast message via WebSocket to all participants in the conversation
+    const io = req.app.get('io');
+    io.to(`conversation_${conversationId}`).emit('new_message', {
+      message: fullMessage
+    });
+
+    console.log(`📤 Message broadcast to conversation_${conversationId}`);
+
+    res.status(201).json({ message: fullMessage });
   } catch (error) {
     console.error('Send message error:', error);
     console.error('Error stack:', error.stack);

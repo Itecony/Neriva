@@ -1,8 +1,10 @@
 // Install dependencies:
-// npm install express bcryptjs jsonwebtoken dotenv passport passport-google-oauth20 express-session cors connect-pg-simple
+// npm install express bcryptjs jsonwebtoken dotenv passport passport-google-oauth20 express-session cors connect-pg-simple socket.io
 
 require('dotenv').config();
 const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
 const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 const passport = require('passport');
@@ -34,6 +36,24 @@ const app = express();
 const HOST = '0.0.0.0';
 const PORT = process.env.PORT || 3000;
 
+// Create HTTP server
+const server = http.createServer(app);
+
+// Initialize Socket.io
+const io = new Server(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    methods: ['GET', 'POST'],
+    credentials: true,
+    allowEIO3: true
+  },
+  transports: ['websocket', 'polling'],
+  allowUpgrades: true
+});
+
+// Make io accessible to routes
+app.set('io', io);
+
 // Connect to database
 connectDB();
 
@@ -43,7 +63,10 @@ configurePassport();
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true
+}));
 
 // Session configuration
 app.use(session({
@@ -64,6 +87,49 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Socket.io connection handling
+io.on('connection', (socket) => {
+  console.log('🔌 User connected:', socket.id);
+
+  // User joins their personal room (for notifications, etc.)
+  socket.on('join_user', (userId) => {
+    socket.join(`user_${userId}`);
+    console.log(`✅ User ${userId} joined personal room`);
+  });
+
+  // User joins a conversation room
+  socket.on('join_conversation', (conversationId) => {
+    socket.join(`conversation_${conversationId}`);
+    console.log(`✅ Socket ${socket.id} joined conversation ${conversationId}`);
+  });
+
+  // User leaves a conversation room
+  socket.on('leave_conversation', (conversationId) => {
+    socket.leave(`conversation_${conversationId}`);
+    console.log(`👋 Socket ${socket.id} left conversation ${conversationId}`);
+  });
+
+  // Typing indicator
+  socket.on('typing', ({ conversationId, userId, userName }) => {
+    socket.to(`conversation_${conversationId}`).emit('user_typing', {
+      userId,
+      userName
+    });
+  });
+
+  // Stop typing indicator
+  socket.on('stop_typing', ({ conversationId, userId }) => {
+    socket.to(`conversation_${conversationId}`).emit('user_stop_typing', {
+      userId
+    });
+  });
+
+  // Handle disconnect
+  socket.on('disconnect', () => {
+    console.log('❌ User disconnected:', socket.id);
+  });
+});
+
 // Health check route
 app.get('/api/health', async (req, res) => {
   let dbStatus = 'Disconnected';
@@ -77,6 +143,7 @@ app.get('/api/health', async (req, res) => {
   res.json({ 
     status: 'Server is running',
     database: dbStatus,
+    websocket: 'Connected',
     timestamp: new Date().toISOString()
   });
 });
@@ -149,7 +216,7 @@ app.use('*', (req, res) => {
       'GET /api/users/:userId/following',
       'GET /api/users/:userId/follower-count',
       '',
-      '-- Messages --',
+      '-- Messages (WebSocket enabled) --',
       'GET /api/conversations (protected)',
       'POST /api/conversations/direct (protected)',
       'POST /api/conversations/group (protected)',
@@ -216,9 +283,10 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server
-app.listen(PORT, HOST, () => {
+// Start server (use server.listen instead of app.listen)
+server.listen(PORT, HOST, () => {
   console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🔌 WebSocket server ready`);
   console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`\n📍 Available endpoints:`);
   console.log(`\n   ✅ Auth & User`);
@@ -253,12 +321,13 @@ app.listen(PORT, HOST, () => {
   console.log(`\n   🔔 Notifications`);
   console.log(`   GET  /api/notifications - Get user notifications (protected)`);
   console.log(`   POST /api/notifications/mark-read - Mark as read (protected)`);
-  console.log(`\n   💬 Messages`);
+  console.log(`\n   💬 Messages (WebSocket Real-Time)`);
   console.log(`   GET  /api/conversations - Get all conversations (protected)`);
   console.log(`   POST /api/conversations/direct - Create/get direct conversation (protected)`);
   console.log(`   POST /api/conversations/group - Create group conversation (protected)`);
   console.log(`   GET  /api/messages/:conversationId - Get messages (protected)`);
   console.log(`   POST /api/messages - Send message (protected)`);
+  console.log(`   🔌  WebSocket events: join_conversation, new_message, typing`);
   console.log(`\n   🎓 Mentor Applications`);
   console.log(`   POST /api/mentors/apply - Submit mentor application (protected)`);
   console.log(`   GET  /api/mentors/application/:id - View application (protected)`);
@@ -303,4 +372,4 @@ app.listen(PORT, HOST, () => {
   console.log(`   GET  /api/health - Health check`);
 });
 
-module.exports = app;
+module.exports = { app, server, io };
