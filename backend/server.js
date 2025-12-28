@@ -40,15 +40,27 @@ const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
 
 // Initialize Socket.io
+const allowedOrigins = process.env.FRONTEND_URL 
+  ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
+  : ['http://localhost:5173', 'http://localhost:3000'];
+
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: function(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     methods: ['GET', 'POST'],
     credentials: true,
     allowEIO3: true
   },
   transports: ['websocket', 'polling'],
-  allowUpgrades: true
+  allowUpgrades: true,
+  pingInterval: 25000,
+  pingTimeout: 60000
 });
 
 // Make io accessible to routes
@@ -63,10 +75,22 @@ configurePassport();
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true
-}));
+
+// Setup CORS with proper origin handling
+const corsOptions = {
+  origin: function(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
 
 // Session configuration
 app.use(session({
