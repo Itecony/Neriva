@@ -8,6 +8,7 @@ const Message = require('./Message');
 const Conversation = require('./Conversation');
 const ConversationParticipant = require('./ConversationParticipant');
 const PostImage = require('./PostImage');
+const PostLike = require('./PostLike');
 const Follow = require('./Follow');
 
 // New Mentor & Resource Models
@@ -37,6 +38,14 @@ Comment.belongsTo(Post, { foreignKey: 'post_id', as: 'post' });
 // Post <-> PostImages
 Post.hasMany(PostImage, { foreignKey: 'post_id', as: 'images' });
 PostImage.belongsTo(Post, { foreignKey: 'post_id', as: 'post' });
+
+// Post <-> PostLikes
+Post.hasMany(PostLike, { foreignKey: 'post_id', as: 'likeRecords', onDelete: 'CASCADE' });
+PostLike.belongsTo(Post, { foreignKey: 'post_id', as: 'post' });
+
+// User <-> PostLikes
+User.hasMany(PostLike, { foreignKey: 'user_id', as: 'likedPosts', onDelete: 'CASCADE' });
+PostLike.belongsTo(User, { foreignKey: 'user_id', as: 'liker' });
 
 // User <-> Projects
 User.hasMany(Project, { foreignKey: 'user_id', as: 'projects' });
@@ -268,6 +277,7 @@ module.exports = {
   Conversation,
   ConversationParticipant,
   PostImage,
+  PostLike,
   Follow,
   
   // New Mentor & Resource Models

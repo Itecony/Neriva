@@ -1,4 +1,4 @@
-const { Post, User, Comment } = require('../models');
+const { Post, User, Comment, PostLike } = require('../models');
 const PostImage = require('../models/PostImage');
 const path = require('path');
 const fs = require('fs');
@@ -295,17 +295,30 @@ const deletePost = async (req, res) => {
   }
 };
 
-// Like post (unchanged)
+// Like post - One like per user per post
 const likePost = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.id;
 
     const post = await Post.findByPk(id);
-
     if (!post) {
       return res.status(404).json({ message: 'Post not found' });
     }
 
+    // Check if user already liked this post
+    const existingLike = await PostLike.findOne({
+      where: { post_id: id, user_id: userId }
+    });
+
+    if (existingLike) {
+      return res.status(400).json({ message: 'You already liked this post' });
+    }
+
+    // Create like
+    await PostLike.create({ post_id: id, user_id: userId });
+    
+    // Increment post likes count
     await post.increment('likes');
     await post.reload();
 
@@ -315,6 +328,42 @@ const likePost = async (req, res) => {
     });
   } catch (error) {
     console.error('Like post error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Unlike post - Remove like from user
+const unlikePost = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const post = await Post.findByPk(id);
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    // Find and delete the like
+    const like = await PostLike.findOne({
+      where: { post_id: id, user_id: userId }
+    });
+
+    if (!like) {
+      return res.status(400).json({ message: 'You have not liked this post' });
+    }
+
+    await like.destroy();
+    
+    // Decrement post likes count
+    await post.decrement('likes');
+    await post.reload();
+
+    res.status(200).json({ 
+      message: 'Post unliked', 
+      likes: post.likes 
+    });
+  } catch (error) {
+    console.error('Unlike post error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -580,6 +629,7 @@ module.exports = {
   updatePost,
   deletePost,
   likePost,
+  unlikePost,
   viewPost,
   addComment,
   getPostComments,

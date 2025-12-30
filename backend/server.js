@@ -147,6 +147,12 @@ io.on('connection', (socket) => {
       userId
     });
   });
+  
+  socket.on('message', (data) => {
+    // Save to database
+    // Emit to recipient
+    socket.broadcast.emit('message', data);
+  });
 
   // Handle disconnect
   socket.on('disconnect', () => {

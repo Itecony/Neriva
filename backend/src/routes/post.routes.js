@@ -44,6 +44,7 @@ router.post('/posts', authenticateToken, postController.createPost);
 router.put('/posts/:id', authenticateToken, postController.updatePost);
 router.delete('/posts/:id', authenticateToken, postController.deletePost);
 router.post('/posts/:id/like', authenticateToken, postController.likePost);
+router.delete('/posts/:id/like', authenticateToken, postController.unlikePost);
 router.post('/posts/:id/view', postController.viewPost);
 router.post('/posts/:id/comment', authenticateToken, postController.addComment);
 
