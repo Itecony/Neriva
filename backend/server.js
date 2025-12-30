@@ -40,14 +40,20 @@ const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
 
 // Initialize Socket.io
-const allowedOrigins = process.env.FRONTEND_URL 
+const productionOrigins = process.env.FRONTEND_URL 
   ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
-  : ['http://localhost:5173', 'http://localhost:3000'];
+  : [];
+
+// Always allow localhost for development
+const devOrigins = ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:4000'];
+const allAllowedOrigins = [...new Set([...productionOrigins, ...devOrigins])];
+
+// remove devorigins when submitting to production
 
 const io = new Server(server, {
   cors: {
     origin: function(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+      if (!origin || allAllowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
@@ -79,7 +85,7 @@ app.use(express.urlencoded({ extended: true }));
 // Setup CORS with proper origin handling
 const corsOptions = {
   origin: function(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+    if (!origin || allAllowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
