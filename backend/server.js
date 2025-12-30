@@ -42,7 +42,7 @@ const server = http.createServer(app);
 // Initialize Socket.io
 const allowedOrigins = process.env.FRONTEND_URL 
   ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
-  : ['http://localhost:5173', 'http://localhost:4000'];
+  : ['http://localhost:5173', 'http://localhost:3000'];
 
 const io = new Server(server, {
   cors: {
