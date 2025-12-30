@@ -46,21 +46,11 @@ const allowedOrigins = process.env.FRONTEND_URL
 
 const io = new Server(server, {
   cors: {
-    origin: function(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
-    credentials: true,
-    allowEIO3: true
+    credentials: true
   },
-  transports: ['websocket', 'polling'],
-  allowUpgrades: true,
-  pingInterval: 25000,
-  pingTimeout: 60000
+  transports: ['websocket', 'polling']
 });
 
 // Make io accessible to routes
