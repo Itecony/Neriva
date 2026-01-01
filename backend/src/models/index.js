@@ -79,6 +79,28 @@ Conversation.belongsToMany(User, {
   as: 'participants'
 });
 
+
+// Conversation <-> ConversationParticipant (One to Many)
+Conversation.hasMany(ConversationParticipant, {
+  foreignKey: 'conversation_id',
+  as: 'conversationParticipants'
+});
+ConversationParticipant.belongsTo(Conversation, {
+  foreignKey: 'conversation_id',
+  as: 'conversation'
+});
+
+// User <-> ConversationParticipant (One to Many)
+User.hasMany(ConversationParticipant, {
+  foreignKey: 'user_id',
+  as: 'conversationParticipants'
+});
+ConversationParticipant.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user'
+});
+
+
 Conversation.hasMany(Message, {
   foreignKey: 'conversation_id',
   as: 'messages'
