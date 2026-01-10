@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Filter, Grid3x3, List, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Filter, Grid3x3, List, X, Star, Clock } from 'lucide-react';
 
 export default function ResourceHub() {
+  const navigate = useNavigate();
   const [resources, setResources] = useState([]);
   const [mentors, setMentors] = useState([]);
   const [filteredResources, setFilteredResources] = useState([]);
@@ -9,11 +11,10 @@ export default function ResourceHub() {
   const [error, setError] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
   
-  // Default to false so filters are hidden initially
   const [showFilters, setShowFilters] = useState(false);
   
-  const [activeTab, setActiveTab] = useState('featured');
-  const [trendingResources, setTrendingResources] = useState([]);
+  // ⚠️ NOTE: Changed default to 'latest' so you can see new items immediately
+  const [activeTab, setActiveTab] = useState('latest');
 
   // Filter states
   const [filters, setFilters] = useState({
@@ -23,83 +24,110 @@ export default function ResourceHub() {
     mentor: ''
   });
 
+  // Initial Load
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchData(activeTab);
+    fetchMentors();
+  }, [activeTab]);
 
+  // Apply filters client-side
   useEffect(() => {
     applyFilters();
   }, [resources, filters]);
 
-  const fetchData = async () => {
+  const fetchMentors = async () => {
+    try {
+      const response = await fetch('https://itecony-neriva-backend.onrender.com/api/mentors');
+      if (response.ok) {
+        const data = await response.json();
+        setMentors(data.mentors || []);
+      }
+    } catch (err) {
+      console.error("Failed to load mentors", err);
+    }
+  };
+
+  const fetchData = async (tab) => {
     setLoading(true);
     setError(null);
+    
+    console.group(`🔄 [ResourceHub] Fetching Data for Tab: "${tab}"`);
+    
     try {
       const token = localStorage.getItem('authToken');
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+      let endpoint = '';
       
-      if (!token) {
-        throw new Error("No 'authToken' found in localStorage. Please log in again.");
+      // ✅ API ENDPOINT MAPPING
+      switch (tab) {
+        case 'trending':
+          endpoint = 'https://itecony-neriva-backend.onrender.com/api/resources/trending?limit=10';
+          break;
+        case 'latest':
+          // General list is usually where new stuff appears
+          endpoint = 'https://itecony-neriva-backend.onrender.com/api/resources';
+          break;
+        case 'featured':
+        default:
+          endpoint = 'https://itecony-neriva-backend.onrender.com/api/resources/featured';
+          break;
       }
 
-      // Fetch featured resources
-      const featuredRes = await fetch(
-        'https://itecony-neriva-backend.onrender.com/api/resources/featured',
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      );
+      console.log(`📡 Hitting Endpoint: ${endpoint}`);
 
-      let featuredData = [];
-      if (featuredRes.ok) {
-        const data = await featuredRes.json();
-        featuredData = Array.isArray(data) ? data : data.resources || [];
+      const response = await fetch(endpoint, { headers });
+      console.log(`🔌 Status: ${response.status}`);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("📦 Raw API Response:", data);
+
+        // Check for 'resources' array or just 'data' if structure differs
+        const list = data.resources || data.data || [];
+        
+        console.log(`✅ Items Found: ${list.length}`);
+        if (list.length > 0) {
+          console.log("🔍 First Item Sample:", list[0]);
+        }
+
+        setResources(list);
+        // We don't setFilteredResources here directly, the useEffect handles it
+      } else {
+        const errText = await response.text();
+        console.error("❌ API Error Body:", errText);
+        throw new Error(`Failed to fetch resources (${response.status})`);
       }
-
-      // Fetch trending resources
-      const trendingRes = await fetch(
-        'https://itecony-neriva-backend.onrender.com/api/resources/trending',
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      );
-
-      if (trendingRes.ok) {
-        const data = await trendingRes.json();
-        const trendingData = Array.isArray(data) ? data : data.resources || [];
-        setTrendingResources(trendingData);
-      }
-
-      // Fetch mentors
-      const mentorRes = await fetch(
-        'https://itecony-neriva-backend.onrender.com/api/mentors',
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      );
-
-      if (mentorRes.ok) {
-        const mentorData = await mentorRes.json();
-        const allMentors = Array.isArray(mentorData) ? mentorData : mentorData.mentors || [];
-        setMentors(allMentors);
-      }
-
-      setResources(featuredData);
-      setFilteredResources(featuredData);
     } catch (err) {
       setError(err.message);
-      console.error('Error fetching data:', err);
+      console.error('❌ Error fetching data:', err);
     } finally {
+      console.groupEnd();
       setLoading(false);
     }
   };
 
   const applyFilters = () => {
+    // Console log to debug filtering logic
+    // console.log("Applying Filters...", { total: resources.length, filters });
+
     let filtered = resources;
 
-    if (filters.domain) filtered = filtered.filter(r => r.domain === filters.domain);
-    if (filters.difficulty) filtered = filtered.filter(r => r.difficultyLevel === filters.difficulty);
-    if (filters.type.length > 0) filtered = filtered.filter(r => filters.type.includes(r.resourceType));
+    if (filters.domain) {
+      filtered = filtered.filter(r => r.domain === filters.domain);
+    }
+    
+    if (filters.difficulty) {
+      // Ensure case-insensitive comparison
+      filtered = filtered.filter(r => r.difficulty_level?.toLowerCase() === filters.difficulty.toLowerCase());
+    }
+    
+    if (filters.type.length > 0) {
+      filtered = filtered.filter(r => filters.type.includes(r.resource_type));
+    }
+    
     if (filters.mentor.trim()) {
-      const mentorQuery = filters.mentor.toLowerCase();
-      filtered = filtered.filter(r => {
-        const mentorFullName = `${r.mentor?.firstName || ''} ${r.mentor?.lastName || ''}`.toLowerCase();
-        const mentorId = r.mentor?._id || r.mentor?.id;
-        return mentorFullName.includes(mentorQuery) || mentorId === filters.mentor;
-      });
+      filtered = filtered.filter(r => r.mentor_id === filters.mentor);
     }
 
     setFilteredResources(filtered);
@@ -122,37 +150,17 @@ export default function ResourceHub() {
     setFilters({ domain: '', difficulty: '', type: [], mentor: '' });
   };
 
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    const token = localStorage.getItem('authToken');
-    if (!token) return;
-
-    let url = 'https://itecony-neriva-backend.onrender.com/api/resources/featured';
-    if (tab === 'trending') url = 'https://itecony-neriva-backend.onrender.com/api/resources/trending';
-    
-    // Simple fetch logic for tab switching
-    if (tab === 'trending' || tab === 'featured') {
-      fetch(url, { headers: { 'Authorization': `Bearer ${token}` } })
-        .then(res => res.ok ? res.json() : Promise.reject())
-        .then(data => {
-            const list = Array.isArray(data) ? data : data.resources || [];
-            setResources(list);
-            setFilteredResources(list);
-        })
-        .catch(err => console.error(`Error fetching ${tab}:`, err));
-    }
-  };
-
   const getDifficultyColor = (difficulty) => {
     switch (difficulty?.toLowerCase()) {
-      case 'beginner': return 'text-green-800 bg-green-100 dark:text-green-200 dark:bg-green-900/50';
-      case 'intermediate': return 'text-orange-800 bg-orange-100 dark:text-orange-200 dark:bg-orange-900/50';
-      case 'advanced': return 'text-red-800 bg-red-100 dark:text-red-200 dark:bg-red-900/50';
-      default: return 'text-blue-800 bg-blue-100 dark:text-blue-200 dark:bg-blue-900/50';
+      case 'beginner': return 'text-green-700 bg-green-50 border-green-200';
+      case 'intermediate': return 'text-orange-700 bg-orange-50 border-orange-200';
+      case 'advanced': return 'text-red-700 bg-red-50 border-red-200';
+      default: return 'text-blue-700 bg-blue-50 border-blue-200';
     }
   };
 
   const formatTime = (minutes) => {
+    if (!minutes) return 'N/A';
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
@@ -160,56 +168,57 @@ export default function ResourceHub() {
 
   const renderRatingStars = (rating) => (
     <div className="flex items-center gap-1">
-      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{rating?.toFixed(1) || 5.0}</span>
-      <div className="flex gap-0.5">
-        {[...Array(5)].map((_, i) => (
-          <span key={i} className="text-amber-400">
-            {i < Math.floor(rating || 5) ? '★' : '☆'}
-          </span>
-        ))}
-      </div>
+      <span className="text-sm font-bold text-gray-900">{rating ? Number(rating).toFixed(1) : '0.0'}</span>
+      <Star className="w-4 h-4 text-yellow-400 fill-current" />
     </div>
   );
 
   const ResourceCard = ({ resource }) => (
     <div
-      onClick={() => window.location.href = `/resource/${resource._id || resource.id}`}
-      className="bg-white rounded-xl border border-gray-200 dark:border-gray-800 p-5 flex flex-col gap-4 hover:shadow-lg hover:border-blue-500/50 dark:hover:border-blue-500/50 transition-all duration-300 cursor-pointer"
+      onClick={() => navigate(`/resource/${resource.id}`)}
+      className="group bg-white rounded-xl border border-gray-200 p-5 flex flex-col gap-3 hover:shadow-lg hover:border-blue-200 transition-all duration-300 cursor-pointer h-full"
     >
-      <h4 className="text-lg font-bold text-gray-900 dark:text-white">{resource.title}</h4>
-      <div className="flex items-center gap-2">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (resource.mentor?._id || resource.mentor?.id) {
-              window.location.href = `/mentor/${resource.mentor._id || resource.mentor.id}`;
-            }
-          }}
-          className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-        >
-          {resource.mentor?.firstName ? `${resource.mentor.firstName} ${resource.mentor.lastName || ''}` : 'Anonymous'}
-        </button>
-        {resource.mentor?.isVerified && <span className="text-blue-600 dark:text-blue-400 text-sm">✓</span>}
+      <div className="flex justify-between items-start">
+        <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase bg-gray-100 text-gray-600 tracking-wide">
+          {resource.resource_type || 'Resource'}
+        </span>
+        {renderRatingStars(resource.rating)}
       </div>
-      {renderRatingStars(resource.rating)}
-      <div className="flex items-center gap-2 text-xs font-medium mt-auto pt-2">
-        <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200">
-          {formatTime(resource.estimatedTimeMins || 120)}
-        </span>
-        <span className={`inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full ${getDifficultyColor(resource.difficultyLevel)}`}>
-          {resource.difficultyLevel || 'Beginner'}
-        </span>
+
+      <h4 className="text-lg font-bold text-gray-900 line-clamp-2 group-hover:text-blue-600 transition-colors">
+        {resource.title}
+      </h4>
+
+      <p className="text-sm text-gray-500 line-clamp-2 flex-1">
+        {resource.description}
+      </p>
+
+      <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+           <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-600">
+              {(resource.mentor?.firstName?.[0] || 'M').toUpperCase()}
+           </div>
+           <span className="text-xs text-gray-600 truncate max-w-[100px]">
+             {resource.mentor ? `${resource.mentor.firstName} ${resource.mentor.lastName}` : 'Mentor'}
+           </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+           <span className={`text-[10px] px-2 py-0.5 rounded border ${getDifficultyColor(resource.difficulty_level)} font-medium uppercase`}>
+             {resource.difficulty_level || 'Beginner'}
+           </span>
+           <span className="text-[10px] text-gray-400 flex items-center gap-1">
+             <Clock className="w-3 h-3" /> {formatTime(resource.estimated_time_minutes)}
+           </span>
+        </div>
       </div>
     </div>
   );
 
-  if (loading) {
+  if (loading && resources.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="w-12 h-12 rounded-full border-4 border-gray-200 dark:border-gray-700 border-t-blue-500 animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading resources...</p>
-        </div>
+        <div className="w-12 h-12 rounded-full border-4 border-gray-200 border-t-blue-600 animate-spin"></div>
       </div>
     );
   }
@@ -218,245 +227,164 @@ export default function ResourceHub() {
     <div className="min-h-screen bg-gray-50">
       <main className="container mx-auto flex-1 px-4 sm:px-6 lg:px-8 py-8">
         
-        {/* Header with Title and Filter Toggle */}
-        <div className="flex flex-wrap justify-between gap-4 items-center mb-6">
+        {/* Header */}
+        <div className="flex flex-wrap justify-between gap-4 items-center mb-8">
           <div>
-            <h1 className="text-gray-900 text-4xl font-black leading-tight tracking-tight">
-              Resource Hub
-            </h1>
-            <p className="text-gray-600 text-base font-normal leading-normal mt-2">
-              Browse resources to enhance your skills.
-            </p>
+            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Resource Hub</h1>
+            <p className="text-gray-500 mt-1">Curated learning materials to accelerate your growth.</p>
           </div>
           
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors shadow-sm ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border font-medium transition-all shadow-sm ${
               showFilters 
-                ? 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700' 
+                ? 'bg-blue-600 border-blue-600 text-white' 
                 : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
             }`}
           >
-            <Filter className="w-5 h-5" />
-            <span className="text-sm font-medium">
-              {showFilters ? 'Hide Filters' : 'Filter Resources'}
-            </span>
+            <Filter className="w-4 h-4" />
+            {showFilters ? 'Hide Filters' : 'Filters'}
           </button>
         </div>
 
-        {/* Main Content Layout Container */}
-        <div className="flex gap-6 items-start relative">
+        {/* Layout */}
+        <div className="flex flex-col lg:flex-row gap-8 items-start">
           
-          {/* SIDEBAR - Conditionally Rendered */}
+          {/* SIDEBAR FILTER */}
           {showFilters && (
-            <aside className="w-72 flex-shrink-0 z-20 sticky top-4">
-              <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm max-h-[calc(100vh-100px)] overflow-y-auto custom-scrollbar">
-                
+            <aside className="w-full lg:w-72 flex-shrink-0 animate-in fade-in slide-in-from-top-4 duration-200">
+              <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm sticky top-4">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-gray-900 text-lg font-bold">Filters</h3>
-                  <button onClick={() => setShowFilters(false)} className="text-gray-500 hover:text-gray-700">
+                  <h3 className="font-bold text-gray-900">Filters</h3>
+                  <button onClick={() => setShowFilters(false)} className="text-gray-400 hover:text-gray-600 lg:hidden">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
-                <div className="space-y-6">
-                  {/* Domain Filter */}
+                <div className="space-y-5">
+                  {/* Domain */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Domain</label>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Domain</label>
                     <select
                       value={filters.domain}
                       onChange={(e) => handleFilterChange('domain', e.target.value)}
-                      className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      className="w-full p-2.5 rounded-lg border border-gray-300 bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                     >
                       <option value="">All Domains</option>
                       <option value="Web Development">Web Development</option>
-                      <option value="Machine Learning">Machine Learning</option>
-                      <option value="UI/UX Design">UI/UX Design</option>
-                      <option value="Data Science">Data Science</option>
                       <option value="Mobile Development">Mobile Development</option>
-                      <option value="DevOps">DevOps</option>
+                      <option value="Data Science">Data Science</option>
+                      <option value="Design">Design</option>
+                      <option value="Cybersecurity">Cybersecurity</option>
                     </select>
                   </div>
 
-                  {/* Difficulty Filter */}
+                  {/* Difficulty */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Difficulty</label>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Difficulty</label>
                     <div className="space-y-2">
                       {['Beginner', 'Intermediate', 'Advanced'].map((level) => (
-                        <div key={level} className="flex items-center">
+                        <label key={level} className="flex items-center cursor-pointer hover:bg-gray-50 p-1 rounded">
                           <input
                             type="radio"
-                            id={level.toLowerCase()}
                             name="difficulty"
-                            value={level}
-                            checked={filters.difficulty === level}
+                            value={level.toLowerCase()}
+                            checked={filters.difficulty === level.toLowerCase()}
                             onChange={(e) => handleFilterChange('difficulty', e.target.value)}
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                           />
-                          <label htmlFor={level.toLowerCase()} className="ml-3 text-sm text-gray-700 cursor-pointer">{level}</label>
-                        </div>
+                          <span className="ml-2 text-sm text-gray-700">{level}</span>
+                        </label>
                       ))}
                     </div>
                   </div>
 
-                  {/* Type Filter */}
+                  {/* Type */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Type</label>
                     <div className="space-y-2">
-                      {['article', 'video', 'pdf', 'repository'].map((type) => (
-                        <div key={type} className="flex items-center">
+                      {['article', 'video', 'course', 'tool'].map((type) => (
+                        <label key={type} className="flex items-center cursor-pointer hover:bg-gray-50 p-1 rounded">
                           <input
                             type="checkbox"
-                            id={type}
                             checked={filters.type.includes(type)}
                             onChange={() => handleTypeChange(type)}
-                            className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
+                            className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                           />
-                          <label htmlFor={type} className="ml-3 text-sm text-gray-700 cursor-pointer capitalize">
-                            {type === 'repository' ? 'Code Repos' : type.charAt(0).toUpperCase() + type.slice(1)}
-                          </label>
-                        </div>
+                          <span className="ml-2 text-sm text-gray-700 capitalize">{type}</span>
+                        </label>
                       ))}
                     </div>
                   </div>
 
-                  {/* Mentor Filter */}
+                  {/* Mentor */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Mentor</label>
-                    <input
-                      type="text"
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Mentor</label>
+                    <select
                       value={filters.mentor}
                       onChange={(e) => handleFilterChange('mentor', e.target.value)}
-                      placeholder="Search mentor..."
-                      className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
-                    {filters.mentor && mentors.length > 0 && (
-                      <div className="mt-2 bg-white border border-gray-200 rounded-lg max-h-40 overflow-y-auto">
-                        {mentors
-                          .filter(mentor =>
-                            `${mentor.firstName} ${mentor.lastName}`.toLowerCase().includes(filters.mentor.toLowerCase())
-                          )
-                          .map((mentor) => (
-                            <div
-                              key={mentor._id || mentor.id}
-                              className="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                              onClick={() => handleFilterChange('mentor', mentor._id || mentor.id)}
-                            >
-                              <p className="text-sm font-medium text-gray-900">
-                                {mentor.firstName} {mentor.lastName}
-                              </p>
-                            </div>
-                          ))}
-                      </div>
-                    )}
+                      className="w-full p-2.5 rounded-lg border border-gray-300 bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    >
+                      <option value="">All Mentors</option>
+                      {mentors.map(m => (
+                        <option key={m.id || m._id} value={m.id || m._id}>
+                          {m.firstName} {m.lastName}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex gap-2 pt-2">
-                    <button
-                      onClick={applyFilters}
-                      className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
-                    >
-                      Apply
-                    </button>
-                    <button
-                      onClick={resetFilters}
-                      className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition"
-                    >
-                      Reset
-                    </button>
-                  </div>
+                  {/* Reset */}
+                  <button
+                    onClick={resetFilters}
+                    className="w-full py-2 bg-gray-100 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Reset Filters
+                  </button>
                 </div>
               </div>
             </aside>
           )}
 
-          {/* RIGHT SIDE: Resource Grid */}
-          <div className="flex-1 w-full min-w-0">
-            {/* Tabs and View Toggle */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-              <div className="w-full sm:w-auto border-b border-gray-200">
-                <nav className="flex space-x-6">
-                  {['featured', 'trending', 'latest'].map((tab) => (
-                    <button
-                      key={tab}
-                      onClick={() => handleTabChange(tab)}
-                      className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
-                        activeTab === tab
-                          ? 'text-blue-600 border-blue-600'
-                          : 'text-gray-500 border-transparent hover:text-gray-700'
-                      }`}
-                    >
-                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                    </button>
-                  ))}
-                </nav>
-              </div>
-
-              <div className="flex items-center gap-2 self-end sm:self-auto">
+          {/* MAIN GRID */}
+          <div className="flex-1 min-w-0 w-full">
+            
+            {/* Tabs */}
+            <div className="flex border-b border-gray-200 mb-6 overflow-x-auto hide-scrollbar">
+              {['latest', 'featured', 'trending'].map((tab) => (
                 <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-2 rounded-lg transition-colors ${
-                    viewMode === 'grid' ? 'text-gray-900 bg-gray-100' : 'text-gray-500 hover:bg-gray-50'
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                    activeTab === tab
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
-                  <Grid3x3 className="w-5 h-5" />
+                  {tab === 'latest' ? 'All Resources' : tab.charAt(0).toUpperCase() + tab.slice(1)}
                 </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`p-2 rounded-lg transition-colors ${
-                    viewMode === 'list' ? 'text-gray-900 bg-gray-100' : 'text-gray-500 hover:bg-gray-50'
-                  }`}
-                >
-                  <List className="w-5 h-5" />
-                </button>
+              ))}
+              <div className="flex-1 flex justify-end items-center gap-2 pb-2 pl-4">
+                 <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded ${viewMode === 'grid' ? 'bg-gray-200 text-gray-900' : 'text-gray-400'}`}><Grid3x3 className="w-4 h-4"/></button>
+                 <button onClick={() => setViewMode('list')} className={`p-1.5 rounded ${viewMode === 'list' ? 'bg-gray-200 text-gray-900' : 'text-gray-400'}`}><List className="w-4 h-4"/></button>
               </div>
             </div>
 
-            {/* Resources Grid */}
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                {activeTab === 'featured' && 'Featured Resources'}
-                {activeTab === 'trending' && 'Trending Resources'}
-                {activeTab === 'latest' && 'Latest Resources'}
-              </h2>
-              
-              <div className={
-                viewMode === 'grid' 
-                  ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
-                  : 'space-y-4'
-              }>
-                {filteredResources.length > 0 ? (
-                  filteredResources.map((resource) => (
-                    <ResourceCard key={resource._id || resource.id} resource={resource} />
-                  ))
-                ) : (
-                  <div className="col-span-full bg-white rounded-xl border border-gray-200 p-12 text-center">
-                    <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
-                      <Filter className="w-6 h-6 text-gray-400" />
-                    </div>
-                    <h3 className="text-lg font-medium text-gray-900">No resources found</h3>
-                    <p className="text-gray-500 mt-1">Try adjusting your filters or search criteria.</p>
-                    <button 
-                      onClick={resetFilters}
-                      className="mt-4 text-blue-600 hover:text-blue-700 font-medium text-sm"
-                    >
-                      Clear all filters
-                    </button>
-                  </div>
-                )}
-              </div>
+            {/* Grid */}
+            <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6' : 'space-y-4'}>
+              {filteredResources.length > 0 ? (
+                filteredResources.map((resource) => (
+                  <ResourceCard key={resource.id || resource._id} resource={resource} />
+                ))
+              ) : (
+                <div className="col-span-full py-12 text-center bg-white rounded-xl border border-dashed border-gray-300">
+                  <p className="text-gray-500">No resources found matching your criteria.</p>
+                  <button onClick={resetFilters} className="mt-2 text-blue-600 hover:underline text-sm font-medium">Clear filters</button>
+                </div>
+              )}
             </div>
 
-            {/* Error State */}
-            {error && (
-              <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
-                <div className="text-red-500">⚠️</div>
-                <p className="text-red-700 text-sm">{error}</p>
-              </div>
-            )}
           </div>
-
         </div>
       </main>
     </div>

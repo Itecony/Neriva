@@ -11,7 +11,7 @@ export default function Topbar() {
   return (
     <>
       {/* Desktop Topbar - visible on sm screens and above */}
-      <nav className="hidden sm:block bg-white border-b border-gray-200">
+      <nav className="hidden sm:block bg-transparent border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
@@ -26,19 +26,19 @@ export default function Topbar() {
             </a>
             {/* Navigation Links */}
             <div className="flex items-center gap-8">
-              <a href="/" className="text-black font-semibold hover:underline transition-colors">
+              {/* <a href="/" className="text-black font-semibold hover:underline transition-colors">
                 Home
-              </a>
+              </a> */}
               {/* <a href="/communities" className="text-black font-semibold hover:underline transition-colors">
                 Communities
               </a>
               <a href="/projects" className="text-black font-semibold hover:underline transition-colors">
                 Projects
               </a> */}
-              <a href="/dreamboard/resources" className="flex items-center gap-1 text-black font-semibold hover:underline transition-colors">
+              {/* <a href="/dreamboard/resources" className="flex items-center gap-1 text-black font-semibold hover:underline transition-colors">
                 Resources
                 <ChevronRight className="w-4 h-4" />
-              </a>
+              </a> */}
             </div>
             {/* Login Button */}
             <a
@@ -52,7 +52,7 @@ export default function Topbar() {
       </nav>
 
       {/* Mobile Topbar - visible only on mobile screens */}
-      <nav className="sm:hidden bg-white border-b border-gray-200">
+      <nav className="sm:hidden bg-transparent border-b border-gray-200">
         <div className="px-4">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
@@ -117,13 +117,13 @@ export default function Topbar() {
 
               {/* Sidebar Navigation */}
               <nav className="flex flex-col p-4 gap-4">
-                <a
+                {/* <a
                   href="/"
                   className="text-black hover:underline transition-colors py-2"
                   onClick={toggleSidebar}
                 >
                   Home
-                </a>
+                </a> */}
                 {/* <a
                   href="/communities"
                   className="text-gray-900 hover:text-gray-600 transition-colors py-2"
@@ -138,14 +138,14 @@ export default function Topbar() {
                 >
                   Projects
                 </a> */}
-                <a
+                {/* <a
                   href="/dreamboard/resources"
                   className="flex items-center gap-1 text-gray-900 hover:text-gray-600 transition-colors py-2"
                   onClick={toggleSidebar}
                 >
                   Resources
                   <ChevronRight className="w-4 h-4" />
-                </a>
+                </a> */}
               </nav>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom"; // ADD THIS
+import { useNavigate } from "react-router-dom";
 import AuthLayout from "./AuthComponents/AuthLayout";
 import AuthCard from "./AuthComponents/AuthCard";
 import AuthLink from "./AuthComponents/AuthLink";
@@ -16,7 +16,7 @@ const Signup = () => {
     password: ""
   });
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // ✅ This is your state
   const navigate = useNavigate();
 
   const handleChange = (e) =>
@@ -25,7 +25,7 @@ const Signup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
+    setLoading(true); // ✅ Starts loader
 
     try {
       const userData = {
@@ -38,18 +38,13 @@ const Signup = () => {
       const response = await api.signup(userData);
       console.log("Signup successful:", response);
       
-      // Redirect to login after successful signup
       navigate("/login");
     } catch (err) {
       setError(err.message || "Signup failed. Please try again.");
       console.error("Signup error:", err);
     } finally {
-      setLoading(false);
+      setLoading(false); // ✅ Stops loader
     }
-  };
-
-  const handleGoogleAuth = () => {
-    api.googleAuth();
   };
 
   return (
@@ -107,21 +102,13 @@ const Signup = () => {
           <div className="flex justify-between items-center mb-4">
             <AuthLink to="/forgot-password">Forgot Password?</AuthLink>
           </div>
-          <AuthButton
-            type="submit"
-            label={loading ? "Signing up..." : "Sign Up"}
-            disabled={loading}
+          
+          {/* ✅ FIXED: Pass the 'loading' state and correct label */}
+          <AuthButton 
+            label="Sign Up" 
+            loading={loading} 
           />
         </form>
-
-        {/* <button
-          type="button"
-          onClick={handleGoogleAuth}
-          className="flex items-center justify-center mt-3 gap-2 border border-gray-300 rounded-lg px-4 py-2 w-full hover:bg-gray-100 transition"
-        >
-          <FcGoogle className="text-2xl" />
-          <span className="font-semibold">Continue with Google</span>
-        </button> */}
       </AuthCard>
     </AuthLayout>
   );

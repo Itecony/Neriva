@@ -2,152 +2,114 @@ import { Routes, Route, useParams } from "react-router-dom";
 import "./App.css";
 import ProtectedRoute from "./ProtectedRoute.jsx";
 
+// Auth Components
 import Login from "./UserDetail/Login";
 import Signup from "./UserDetail/Signup";
 import Register from "./UserDetail/Register";
 import MFA from "./UserDetail/MFA";
 import ForgotPassword from "./UserDetail/ForgotPassword";
+
+// Layouts & Main Pages
 import UserLayout from "./Pages/User/ReUsable/UserLayout.jsx";
-import Profile from "../src/UserDetail/profile.jsx";
+import LandingPage from "./Pages/LandingPage/LandingPage";
+import Dreamboard from "./Pages/User/Dreamboard/Dreamboard.jsx";
+
+// Profile Components
+import Profile from "./UserDetail/profile.jsx"; 
+
+// Resource Components
+import ResourceHub from "./Pages/User/Resource/ResourceHub.jsx";
 import ResourceDetail from "./Pages/User/Resource/ResourceDetail.jsx";
+
+// Networking Components
+import Networking from "./Pages/User/Networking/Networking.jsx";
+
+// Mentorship Components
+import MentorshipHub from "./Pages/User/Mentorship/MentorshipHub.jsx";
 import MentorProfileView from "./Pages/User/Mentorship/MentorProfileView.jsx";
 import MentorProfilePersonal from "./Pages/User/Mentorship/MentorProfilePersonal.jsx";
 import MentorRegistrationForm from "./Pages/User/Mentorship/MentorRegistrationForm.jsx";
+import MentorApplicationReview from "./Pages/User/Mentorship/MentorApplicationReview.jsx";
 
-// Import your user pages
-import Dreamboard from "./Pages/User/Dreamboard/Dreamboard.jsx";
-import ResourceHub from "./Pages/User/Resource/ResourceHub.jsx";
-import Networking from "./Pages/User/Networking/Networking.jsx";
-import MentorshipHub from "./Pages/User/Mentorship/MentorshipHub.jsx";
-import LandingPage from "./Pages/LandingPage/LandingPage";
+// ---------------------------------------------------------
+// ✅ Main App Component with Routing
+// ---------------------------------------------------------
 
 function App() {
   return (
     <Routes>
-      {/* Auth routes */}
+      {/* ------------------------------------------------ */}
+      {/* 🔓 PUBLIC ROUTES (No Sidebar/Layout)             */}
+      {/* ------------------------------------------------ */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/mfa" element={<MFA />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/mfa" element={<MFA />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
 
-      {/* Protected routes with UserLayout */}
+      {/* ------------------------------------------------ */}
+      {/* 🔒 PROTECTED ROUTES (Shared Sidebar Layout)      */}
+      {/* ------------------------------------------------ */}
+      {/* This single wrapper keeps the Sidebar mounted 
+          when navigating between any of the child routes below.
+      */}
       <Route
-        path="/dreamboard"
         element={
           <ProtectedRoute>
             <UserLayout />
           </ProtectedRoute>
         }
       >
-        <Route index element={<Dreamboard />} />
-        <Route path="resources" element={<ResourceHub />} />
-        <Route path="networking" element={<Networking />} />
-        <Route path="networking/messages/:conversationId" element={<Networking />} />
-        <Route path="mentorship" element={<MentorshipHub />} />
+        {/* --- Dreamboard Section --- */}
+        <Route path="/dreamboard" element={<Dreamboard />} />
+        
+        {/* Networking (Main & Specific Chat) */}
+        <Route path="/dreamboard/networking" element={<Networking />} />
+        <Route path="/dreamboard/networking/messages/:conversationId" element={<Networking />} />
+        
+        {/* Mentorship Hub */}
+        <Route path="/dreamboard/mentorship" element={<MentorshipHub />} />
+
+        {/* --- Global Resources --- */}
+        <Route path="/resources" element={<ResourceHub />} />
+        <Route path="/resource/:resourceId" element={<ResourceDetailWithParams />} />
+
+        {/* --- Profile Section --- */}
+        {/* My Personal Profile */}
+        <Route path="/profile" element={<Profile isPersonal={true} />} />
+        {/* Viewing Others */}
+        <Route path="/profile/:userId" element={<ProfileWithParams />} />
+
+        {/* --- Mentorship Section --- */}
+        {/* My Mentor Dashboard */}
+        <Route path="/mentor/profile" element={<MentorProfilePersonal />} />
+        {/* Viewing a Mentor */}
+        <Route path="/mentor/:mentorId" element={<MentorProfileViewWithParams />} />
+        {/* Registration */}
+        <Route path="/become-mentor" element={<MentorRegistrationForm />} />
+        {/* Admin: Mentor Application Reviews */}
+        <Route path="/admin/mentor-applications" element={<MentorApplicationReview />} />
       </Route>
 
-      {/* Personal User Profile */}
-      <Route
-        path="/profile"
-        element={
-          <ProtectedRoute>
-            <UserLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Profile isPersonal={true} />} />
-      </Route>
-
-      {/* Other User's Profile */}
-      <Route
-        path="/profile/:userId"
-        element={
-          <ProtectedRoute>
-            <UserLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<ProfileWithParams />} />
-      </Route>
-
-      {/* Personal Mentor Profile */}
-      <Route
-        path="/mentor/profile"
-        element={
-          <ProtectedRoute>
-            <UserLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<MentorProfilePersonal />} />
-      </Route>
-
-      {/* Other Mentor's Profile */}
-      <Route
-        path="/mentor/:mentorId"
-        element={
-          <ProtectedRoute>
-            <UserLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<MentorProfileViewWithParams />} />
-      </Route>
-
-      {/* Mentor Registration */}
-      <Route
-        path="/become-mentor"
-        element={
-          <ProtectedRoute>
-            <UserLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<MentorRegistrationForm />} />
-      </Route>
-
-      {/* Resource Detail */}
-      <Route
-        path="/resource/:resourceId"
-        element={
-          <ProtectedRoute>
-            <UserLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<ResourceDetailWithParams />} />
-      </Route>
-
-      {/* Resource Hub */}
-      <Route
-        path="/resources"
-        element={
-          <ProtectedRoute>
-            <UserLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<ResourceHub />} />
-      </Route>
     </Routes>
   );
 }
 
-// Helper component to extract mentorId from URL params
-function MentorProfileViewWithParams() {
-  const { mentorId } = useParams();
-  return <MentorProfileView mentorId={mentorId} />;
-}
+// ---------------------------------------------------------
+// ✅ Helper Components to extract Params
+// ---------------------------------------------------------
 
-// Helper component to extract userId from URL params
 function ProfileWithParams() {
   const { userId } = useParams();
   return <Profile userId={userId} isPersonal={false} />;
 }
 
-// Helper component to extract resourceId from URL params
+function MentorProfileViewWithParams() {
+  const { mentorId } = useParams();
+  return <MentorProfileView mentorId={mentorId} />;
+}
+
 function ResourceDetailWithParams() {
   const { resourceId } = useParams();
   return <ResourceDetail resourceId={resourceId} />;

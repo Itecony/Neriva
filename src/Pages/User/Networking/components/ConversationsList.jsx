@@ -1,27 +1,84 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; // ✅ Added
-import { MessageCircle, Users, UserPlus, Search, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { MessageCircle, Users, Search, ArrowRight } from 'lucide-react';
+import socketService from '../../../../utils/socketService'; 
 
 export default function ConversationsList({ onSelectConversation, selectedConversationId }) {
-  const navigate = useNavigate(); // ✅ Initialize hook
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('chats'); 
   const [conversations, setConversations] = useState([]);
   const [contacts, setContacts] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [typingStatus, setTypingStatus] = useState({}); 
   
   const currentUserId = localStorage.getItem('userId');
 
+  // 1. Initial Data Fetch
   useEffect(() => {
     if (activeTab === 'chats') {
-      fetchConversations();
+      // ✅ Only show loading spinner if we have NO data yet
+      const shouldShowLoader = conversations.length === 0;
+      fetchConversations(!shouldShowLoader); 
     } else {
       fetchContacts();
     }
   }, [activeTab]);
 
-  const fetchConversations = async () => {
-    setLoading(true);
+  // 2. WebSocket Listeners
+  useEffect(() => {
+    const handleListUpdate = (data) => {
+      const msg = data.message || data;
+      
+      setConversations(prev => {
+        const index = prev.findIndex(c => c.id === msg.conversationId);
+        
+        if (index !== -1) {
+          // Update existing: Move to top & update snippet
+          const updatedConv = {
+            ...prev[index],
+            updatedAt: msg.createdAt, 
+            messages: [msg] 
+          };
+          const newList = [...prev];
+          newList.splice(index, 1); 
+          return [updatedConv, ...newList]; 
+        } else {
+          // ✅ FIX: New conversation? Fetch SILENTLY (no spinner)
+          fetchConversations(true); 
+          return prev;
+        }
+      });
+    };
+
+    const handleTyping = ({ conversationId, userId }) => {
+      if (userId !== currentUserId) {
+        setTypingStatus(prev => ({ ...prev, [conversationId]: 'typing...' }));
+      }
+    };
+
+    const handleStopTyping = ({ conversationId }) => {
+      setTypingStatus(prev => {
+        const newState = { ...prev };
+        delete newState[conversationId];
+        return newState;
+      });
+    };
+
+    socketService.on('new_message', handleListUpdate);
+    socketService.on('user_typing', handleTyping);
+    socketService.on('user_stop_typing', handleStopTyping);
+
+    return () => {
+      socketService.off('new_message', handleListUpdate);
+      socketService.off('user_typing', handleTyping);
+      socketService.off('user_stop_typing', handleStopTyping);
+    };
+  }, [currentUserId]); 
+
+  // ✅ UPDATED: Accepts 'silent' to prevent spinner flash
+  const fetchConversations = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const token = localStorage.getItem('authToken');
       const response = await fetch('https://itecony-neriva-backend.onrender.com/api/conversations', {
@@ -35,7 +92,7 @@ export default function ConversationsList({ onSelectConversation, selectedConver
     } catch (error) {
       console.error('Error fetching conversations:', error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -46,7 +103,6 @@ export default function ConversationsList({ onSelectConversation, selectedConver
       
       let targetUserId = currentUserId;
       if (!targetUserId || targetUserId.toString().length < 10) {
-          console.log("⚠️ Invalid Local ID. Fetching real profile ID...");
           const profileRes = await fetch('https://itecony-neriva-backend.onrender.com/api/profile', {
              headers: { 'Authorization': `Bearer ${token}` }
           });
@@ -54,8 +110,6 @@ export default function ConversationsList({ onSelectConversation, selectedConver
              const profile = await profileRes.json();
              targetUserId = profile.id || profile._id;
              localStorage.setItem('userId', targetUserId);
-          } else {
-             throw new Error("Could not retrieve valid User ID.");
           }
       }
 
@@ -72,9 +126,7 @@ export default function ConversationsList({ onSelectConversation, selectedConver
         new Map(combinedContacts.map(user => [user.id || user._id, user])).values()
       );
 
-      console.log("✅ Contacts Loaded:", uniqueContacts.length);
       setContacts(uniqueContacts);
-
     } catch (error) {
       console.error('Error fetching contacts:', error);
     } finally {
@@ -85,7 +137,13 @@ export default function ConversationsList({ onSelectConversation, selectedConver
   const handleContactClick = async (contact) => {
     try {
       const token = localStorage.getItem('authToken');
+      // Ensure we grab the correct ID field
       const targetId = contact.id || contact._id;
+
+      if (!targetId) {
+          console.error("Contact has no ID:", contact);
+          return;
+      }
 
       const response = await fetch('https://itecony-neriva-backend.onrender.com/api/conversations/direct', {
         method: 'POST',
@@ -100,23 +158,27 @@ export default function ConversationsList({ onSelectConversation, selectedConver
         const data = await response.json();
         const conversation = data.conversation || data;
         
+        // 1. Manually Add to 'Chats' list immediately
+        setConversations(prev => {
+            // Check if it already exists to avoid duplicates
+            const exists = prev.find(c => c.id === conversation.id);
+            if (exists) return prev;
+            // Add to TOP of list
+            return [conversation, ...prev];
+        });
+
+        // 2. Switch Tab & Navigate
+        setActiveTab('chats'); 
         onSelectConversation(conversation);
-        setActiveTab('chats');
-        
-        // ✅ Navigate to chat (triggers Networking.jsx to open chat)
         navigate(`/dreamboard/networking/messages/${conversation.id}`);
-        
-        fetchConversations(); 
       }
     } catch (err) {
       console.error("Failed to start chat", err);
     }
   };
-
-  // ✅ New Handler for Existing Chats
+  
   const handleChatClick = (conversation) => {
     onSelectConversation(conversation);
-    // ✅ Navigate to chat URL
     navigate(`/dreamboard/networking/messages/${conversation.id}`);
   };
 
@@ -160,12 +222,15 @@ export default function ConversationsList({ onSelectConversation, selectedConver
           <div className="divide-y divide-gray-50">
             {filteredList.map((item) => {
               if (activeTab === 'chats') {
-                const conv = item;
                 const isGroup = item.type === 'group';
                 const otherUser = item.participants?.find(p => (p.id || p._id) !== currentUserId) || item.participants?.[0];
                 const displayName = isGroup ? item.name : `${otherUser?.firstName || 'User'} ${otherUser?.lastName || ''}`;
                 const image = isGroup ? null : (otherUser?.avatar || otherUser?.profileImage); 
                 const isSelected = item.id === selectedConversationId;
+                
+                const isTyping = typingStatus[item.id];
+                const lastMsg = item.messages?.[item.messages.length - 1] || item.lastMessage;
+                const previewText = lastMsg?.content || 'Open chat';
 
                 return (
                   <button key={item.id} onClick={() => handleChatClick(item)} className={`w-full flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors text-left ${isSelected ? 'bg-teal-50 border-r-4 border-teal-500' : ''}`}>
@@ -173,8 +238,12 @@ export default function ConversationsList({ onSelectConversation, selectedConver
                       {image ? <img src={image} className="w-10 h-10 rounded-full object-cover border" alt="" /> : <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white font-bold">{isGroup ? <Users className="w-5 h-5" /> : (displayName[0] || 'U')}</div>}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className={`text-sm truncate ${isSelected ? 'font-bold text-teal-900' : 'font-medium text-gray-900'}`}>{displayName}</h3>
-                      <p className="text-xs text-gray-500 truncate">{item.messages?.[0]?.content || 'Open chat'}</p>
+                      <div className="flex justify-between items-baseline mb-1">
+                        <h3 className={`text-sm truncate ${isSelected ? 'font-bold text-teal-900' : 'font-medium text-gray-900'}`}>{displayName}</h3>
+                      </div>
+                      <p className={`text-xs truncate ${isTyping ? 'text-teal-600 font-medium italic' : 'text-gray-500'}`}>
+                        {isTyping || previewText}
+                      </p>
                     </div>
                   </button>
                 );
@@ -182,7 +251,6 @@ export default function ConversationsList({ onSelectConversation, selectedConver
                 const contact = item;
                 const displayName = `${contact.firstName || 'User'} ${contact.lastName || ''}`;
                 const image = contact.profilePicture || contact.profileImage || contact.avatar; 
-
                 return (
                   <button key={contact.id || contact._id} onClick={() => handleContactClick(contact)} className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors text-left group">
                     <div className="relative flex-shrink-0">

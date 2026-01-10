@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Heart, MessageCircle } from 'lucide-react'; // ✅ Import Icons
+import { Heart, MessageCircle } from 'lucide-react'; 
 import PostModalHeader from './PostModalHeader';
 import TextEditor from './TextEditor';
 import MediaInput from './MediaInput';
@@ -20,9 +20,11 @@ export default function PostModal({
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [errors, setErrors] = useState([]);
   
-  // ✅ NEW: Local state for Likes and Comments to allow instant updates
+  // ✅ STATE: Track Likes & Comments locally
   const [likeCount, setLikeCount] = useState(post?.likes || 0);
-  const [isLiked, setIsLiked] = useState(false); // You might need to check if user already liked from API
+  // Note: ideally your 'post' object from API should have an 'is_liked' boolean field.
+  // Defaulting to false if not present.
+  const [isLiked, setIsLiked] = useState(post?.is_liked || false); 
   const [comments, setComments] = useState(post?.commentsList || []);
 
   const [filesToUpload, setFilesToUpload] = useState([]);
@@ -49,8 +51,9 @@ export default function PostModal({
   useEffect(() => {
     if (post) {
       setLikeCount(post.likes || 0);
-      // If your API returns "is_liked" or similar, set it here:
-      // setIsLiked(post.is_liked); 
+      // If API provides 'is_liked', use it. Otherwise, defaults to false.
+      if (post.is_liked !== undefined) setIsLiked(post.is_liked);
+      
       if (mode === 'view') fetchComments(post.id);
     }
   }, [post, mode]);
@@ -64,7 +67,6 @@ export default function PostModal({
 
       if (response.ok) {
         const data = await response.json();
-        // Handle different comment response structures
         const commentsArray = Array.isArray(data) ? data : (data.comments || []);
         setComments(commentsArray);
       }
@@ -74,7 +76,6 @@ export default function PostModal({
     }
   };
 
-  // ... (handleInputChange, handleImagesChange, handleFilesChange, handleError, uploadImageToPost remain the same) ...
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -89,15 +90,6 @@ export default function PostModal({
     setFilesToUpload(files);
   };
 
-  const handleError = (error) => {
-    if (typeof error === 'string') {
-      setErrors([error]);
-    } else if (Array.isArray(error)) {
-      setErrors(error);
-    }
-    setTimeout(() => setErrors([]), 5000);
-  };
-
   const uploadImageToPost = async (postId, file) => {
     const token = localStorage.getItem('authToken');
     const formData = new FormData();
@@ -110,48 +102,57 @@ export default function PostModal({
       body: formData
     });
 
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Image upload failed');
-    }
+    if (!response.ok) throw new Error('Image upload failed');
     return response.json();
   };
 
-  // ✅ UPDATED: Optimistic Like Handler
+  // --------------------------------------------------------
+  // ✅ LOGIC: Optimistic Like/Unlike
+  // --------------------------------------------------------
   const handleLikePost = async () => {
     if (!post) return;
 
-    // 1. Optimistic Update (Immediate Feedback)
+    // 1. Capture previous state for rollback
     const previousLiked = isLiked;
     const previousCount = likeCount;
 
-    setIsLiked(!isLiked);
-    setLikeCount(prev => isLiked ? prev - 1 : prev + 1);
+    // 2. Determine new state (Optimistic)
+    // If currently liked, we are unliking (decrement). If not, liking (increment).
+    const newLikedState = !isLiked;
+    const newLikeCount = newLikedState ? likeCount + 1 : likeCount - 1;
+
+    // 3. Apply Optimistic Update immediately
+    setIsLiked(newLikedState);
+    setLikeCount(newLikeCount);
 
     try {
       const token = localStorage.getItem('authToken');
+      
+      // 4. Determine Method based on intended action
+      // If we just set it to True, we want to POST (Like). If False, DELETE (Unlike).
+      const method = newLikedState ? 'POST' : 'DELETE';
+
       const response = await fetch(`https://itecony-neriva-backend.onrender.com/api/posts/${post.id}/like`, {
-        method: 'POST',
+        method: method,
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (!response.ok) {
-        throw new Error('Failed to like post');
+        throw new Error('Failed to update like status');
       }
       
-      // Optional: If backend returns new count, sync it here
+      // Optional: Sync exact count from server response if available
       // const data = await response.json();
-      // setLikeCount(data.likes);
+      // if (data.likes !== undefined) setLikeCount(data.likes);
 
     } catch (error) {
-      console.error("Error liking post", error);
-      // Revert on failure
+      console.error("Error updating like status", error);
+      // 5. Revert on failure
       setIsLiked(previousLiked);
       setLikeCount(previousCount);
     }
   };
 
-  // ... (handleSubmit and handleTagsDetected remain the same) ...
   const handleSubmit = async () => {
     const validation = validatePostData(formData);
     if (!validation.valid) {
@@ -192,16 +193,13 @@ export default function PostModal({
 
       const data = await response.json();
       const newPostId = data.post?.id || data.id;
-      console.log('✅ Post text saved. ID:', newPostId);
 
       if (filesToUpload.length > 0 && newPostId) {
         setIsUploadingImages(true);
         try {
           await Promise.all(filesToUpload.map(file => uploadImageToPost(newPostId, file)));
-          console.log('✅ Images uploaded successfully');
         } catch (uploadErr) {
           console.error("Image upload failed", uploadErr);
-          alert("Post created, but some images failed to upload.");
         }
         setIsUploadingImages(false);
       }
@@ -225,7 +223,6 @@ export default function PostModal({
 
 
   if (isEditMode) {
-    // ... (Edit Mode JSX remains the same as previous step) ...
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur">
         <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -321,9 +318,8 @@ export default function PostModal({
              </div>
           )}
 
-          {/* ✅ UPDATED: Stats & Action Buttons */}
+          {/* ✅ UPDATED: Like Button with Action Handler */}
           <div className="flex items-center gap-6 mb-6 pt-4 border-t border-gray-100">
-            {/* Like Button */}
             <button 
               onClick={handleLikePost}
               className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-200 ${
@@ -340,7 +336,6 @@ export default function PostModal({
               </span>
             </button>
 
-            {/* Comment Indicator */}
             <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 text-gray-600 rounded-full">
               <MessageCircle className="w-5 h-5" />
               <span className="font-semibold text-sm">

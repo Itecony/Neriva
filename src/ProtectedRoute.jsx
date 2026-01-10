@@ -1,35 +1,36 @@
-// src/components/ProtectedRoute.jsx
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import api from './api';
 
 export default function ProtectedRoute({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(null);
+  // 1. OPTIMISTIC CHECK: If token exists, assume true initially
+  const hasToken = !!localStorage.getItem('authToken');
+  const [isAuthenticated, setIsAuthenticated] = useState(hasToken);
 
   useEffect(() => {
-    checkAuth();
+    if (hasToken) {
+      verifyToken();
+    }
   }, []);
 
-  const checkAuth = async () => {
-    const token = localStorage.getItem('authToken');
-    
-    if (!token) {
-      setIsAuthenticated(false);
-      return;
-    }
-
+  const verifyToken = async () => {
     try {
-      await api.getProfile();
-      setIsAuthenticated(true);
+      // Check if token is actually valid on server
+      await api.getProfile(); 
+      // If successful, do nothing (we are already rendering children)
     } catch (error) {
-      setIsAuthenticated(false);
+      // If invalid, THEN kick user out
+      console.error("Session expired", error);
       localStorage.removeItem('authToken');
+      setIsAuthenticated(false);
     }
   };
 
-  if (isAuthenticated === null) {
-    return <div>Loading...</div>;
+  // 2. If no token exists at all, redirect login
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
   }
 
-  return isAuthenticated ? children : <Navigate to="/login" />;
+  // 3. Render children IMMEDIATELY (No "Loading..." screen)
+  return children;
 }

@@ -2,33 +2,34 @@ import React from "react";
 
 const AuthLayout = ({ children, image }) => {
   return (
-    // Outermost gradient layer
-    <div className="min-h-screen flex items-center justify-center 
-    bg-[radial-gradient(circle_at_30%_40%,_#38bdf8,_#3b82f6,_#9333ea,_#1e3a8a)]">
-      {/* Background image container */}
+    <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden bg-gray-900">
+      
+      {/* 1. DESKTOP BACKGROUND: Gradient */}
+      <div className="absolute inset-0 hidden md:block bg-[radial-gradient(circle_at_30%_40%,_#38bdf8,_#3b82f6,_#9333ea,_#1e3a8a)]"></div>
+
+      {/* 2. MOBILE BACKGROUND: Full Screen Image */}
       <div 
-        className="hidden md:flex fixed inset-0 bg-cover bg-center 
-                   backdrop-blur-sm items-center justify-center z-50 
-                   mx-5 sm:mx-20 my-20 sm:my-10 py-8 rounded-3xl"
-        // ✅ Use the image prop dynamically here
+        className="absolute inset-0 md:hidden bg-cover bg-center"
         style={{ backgroundImage: `url(${image})` }}
       >
-        {/* Dark overlay for contrast */}
-        <div className="absolute inset-0 bg-black/30 rounded-3xl"></div>
-
-        {/* Foreground content */}
-        <div className="z-10 flex items-center justify-center w-full h-full">
-          {children}
-        </div>
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"></div>
       </div>
 
-      {/* Fallback for small screens (no image) */}
-      <div className="md:hidden flex items-center justify-center w-full h-full z-10">
+      {/* 3. DESKTOP IMAGE CONTAINER (The floating card effect) */}
+      <div 
+        className="absolute hidden md:block inset-0 m-8 lg:m-16 rounded-[2.5rem] bg-cover bg-center shadow-2xl overflow-hidden"
+        style={{ backgroundImage: `url(${image})` }}
+      >
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+      </div>
+
+      {/* 4. CONTENT LAYER */}
+      <div className="relative z-10 w-full max-w-md px-4 h-full flex flex-col justify-center">
         {children}
       </div>
+
     </div>
   );
 };
 
 export default AuthLayout;
-

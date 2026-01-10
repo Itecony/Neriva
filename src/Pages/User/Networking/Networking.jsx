@@ -1,21 +1,39 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom'; // ✅ Added for routing support
+import { useParams, useNavigate } from 'react-router-dom';
 import { MessageCircle } from 'lucide-react';
 import ConversationsList from './components/ConversationsList';
 import ChatSpace from './components/ChatSpace';
+import socketService from '../../../utils/socketService'; // ✅ Import your service
 
 export default function Networking() {
-  const { conversationId } = useParams(); // ✅ Catch ID from URL (e.g. /networking/messages/123)
+  const { conversationId } = useParams();
   const navigate = useNavigate();
   
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
 
-  // If URL has an ID, we need to load that conversation immediately
+  // ✅ 1. Initialize Global Socket Connection
+  useEffect(() => {
+    // Connect to the WebSocket server
+    socketService.connect();
+
+    // Get current user (adjust based on where you store user info)
+    const currentUser = JSON.parse(localStorage.getItem('user')); 
+    
+    // Join the "User Room" to receive notifications/updates for any chat
+    if (currentUser?.id) {
+      socketService.joinUser(currentUser.id);
+    }
+
+    // Cleanup: Disconnect when user leaves the Networking page
+    return () => {
+      socketService.disconnect();
+    };
+  }, []);
+
+  // Handle URL updates
   useEffect(() => {
     if (conversationId) {
-      // In a real app, you might fetch specific conversation details here 
-      // or rely on the list to populate it. For now, we set the ID so ChatSpace can load.
       setSelectedConversation({ id: conversationId }); 
       setIsMobileChatOpen(true);
     }
@@ -24,7 +42,6 @@ export default function Networking() {
   const handleSelectConversation = (conversation) => {
     setSelectedConversation(conversation);
     setIsMobileChatOpen(true);
-    // Update URL without reloading page for deep linking
     navigate(`/networking/messages/${conversation.id}`, { replace: true });
   };
 
@@ -43,11 +60,10 @@ export default function Networking() {
         {selectedConversation ? (
           <ChatSpace
             conversationId={selectedConversation.id}
-            // Pass full object if available, otherwise just ID (ChatSpace will handle fetching details if needed)
             conversation={selectedConversation} 
             onBack={() => {
               setIsMobileChatOpen(false);
-              navigate('/networking'); // Clear URL on back
+              navigate('/networking');
             }}
           />
         ) : (
