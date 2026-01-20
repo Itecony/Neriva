@@ -17,28 +17,30 @@ export default function Topbar() {
             {/* Logo */}
             <a href="/" className="flex items-center">
               <div className="flex items-center gap-2">
-               <img
-                src="/assets/Neriva main logo Light UI.png"
-                alt="Company Logo"
-                className="h-14 w-25"
-              />
+                <img
+                  src="/assets/Neriva main logo Light UI.png"
+                  alt="Company Logo"
+                  className="h-14 w-25"
+                />
               </div>
             </a>
             {/* Navigation Links */}
             <div className="flex items-center gap-8">
-              {/* <a href="/" className="text-black font-semibold hover:underline transition-colors">
-                Home
-              </a> */}
-              {/* <a href="/communities" className="text-black font-semibold hover:underline transition-colors">
-                Communities
+              <a href="#features" className="text-black font-semibold hover:underline transition-colors">
+                Features
               </a>
-              <a href="/projects" className="text-black font-semibold hover:underline transition-colors">
-                Projects
-              </a> */}
-              {/* <a href="/dreamboard/resources" className="flex items-center gap-1 text-black font-semibold hover:underline transition-colors">
+              <a href="#resources" className="text-black font-semibold hover:underline transition-colors">
                 Resources
-                <ChevronRight className="w-4 h-4" />
-              </a> */}
+              </a>
+              <a href="#mentorship" className="text-black font-semibold hover:underline transition-colors">
+                Mentorship
+              </a>
+              <a href="#networking" className="text-black font-semibold hover:underline transition-colors">
+                Networking
+              </a>
+              <a href="#contact" className="text-black font-semibold hover:underline transition-colors">
+                Contact
+              </a>
             </div>
             {/* Login Button */}
             <a
@@ -117,35 +119,41 @@ export default function Topbar() {
 
               {/* Sidebar Navigation */}
               <nav className="flex flex-col p-4 gap-4">
-                {/* <a
-                  href="/"
-                  className="text-black hover:underline transition-colors py-2"
+                <a
+                  href="#features"
+                  className="text-gray-900 hover:text-gray-600 transition-colors py-2 font-medium"
                   onClick={toggleSidebar}
                 >
-                  Home
-                </a> */}
-                {/* <a
-                  href="/communities"
-                  className="text-gray-900 hover:text-gray-600 transition-colors py-2"
-                  onClick={toggleSidebar}
-                >
-                  Communities
+                  Features
                 </a>
                 <a
-                  href="/projects"
-                  className="text-gray-900 hover:text-gray-600 transition-colors py-2"
-                  onClick={toggleSidebar}
-                >
-                  Projects
-                </a> */}
-                {/* <a
-                  href="/dreamboard/resources"
-                  className="flex items-center gap-1 text-gray-900 hover:text-gray-600 transition-colors py-2"
+                  href="#resources"
+                  className="text-gray-900 hover:text-gray-600 transition-colors py-2 font-medium"
                   onClick={toggleSidebar}
                 >
                   Resources
-                  <ChevronRight className="w-4 h-4" />
-                </a> */}
+                </a>
+                <a
+                  href="#mentorship"
+                  className="text-gray-900 hover:text-gray-600 transition-colors py-2 font-medium"
+                  onClick={toggleSidebar}
+                >
+                  Mentorship
+                </a>
+                <a
+                  href="#networking"
+                  className="text-gray-900 hover:text-gray-600 transition-colors py-2 font-medium"
+                  onClick={toggleSidebar}
+                >
+                  Networking
+                </a>
+                <a
+                  href="#contact"
+                  className="text-gray-900 hover:text-gray-600 transition-colors py-2 font-medium"
+                  onClick={toggleSidebar}
+                >
+                  Contact
+                </a>
               </nav>
             </div>
           </div>

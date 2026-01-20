@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { 
-  ChevronLeft, Star, Bookmark, CheckCircle, Share2, X, Menu, 
+import {
+  ChevronLeft, Star, Bookmark, CheckCircle, Share2, X, Menu,
   AlertCircle, Clock, BarChart, User, MessageSquare, TrendingUp, Users,
   ThumbsUp, Trash2, Edit2, Check
 } from 'lucide-react';
@@ -11,9 +11,9 @@ export default function ResourceDetail({ resourceId }) {
   const [activeTab, setActiveTab] = useState('description');
   const [resource, setResource] = useState(null);
   const [analytics, setAnalytics] = useState(null);
-  
+
   // We treat "comments" as a mixed list or the primary feedback list for now
-  const [reviews, setReviews] = useState([]); 
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -70,12 +70,40 @@ export default function ResourceDetail({ resourceId }) {
     try {
       const token = localStorage.getItem('authToken');
       const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+      // 1. Fetch Resource (Critical)
       const response = await fetch(`https://itecony-neriva-backend.onrender.com/api/resources/${resourceId}`, { headers });
       if (!response.ok) throw new Error('Failed to load resource');
       const data = await response.json();
       const resData = data.resource || data.data || data;
       setResource(resData);
-      if (resData.is_bookmarked) setIsBookmarked(true);
+
+      // 2. Fetch Bookmarks (Non-Critical - Sync Check)
+      let isBm = false;
+      if (resData.is_bookmarked) isBm = true;
+
+      if (token) {
+        try {
+          // Increase limit to avoid pagination misses
+          const bookmarksRes = await fetch('https://itecony-neriva-backend.onrender.com/api/users/bookmarks?limit=100', { headers });
+          if (bookmarksRes.ok) {
+            const bData = await bookmarksRes.json();
+            const myBookmarks = bData.bookmarks || bData.data || [];
+
+            console.log('Checking Bookmarks for:', resourceId);
+            // Robust check
+            const found = myBookmarks.some(b => {
+              const rId = b.resource_id || (b.resource && (b.resource.id || b.resource._id)) || b.id;
+              return String(rId) === String(resourceId);
+            });
+            if (found) isBm = true;
+          }
+        } catch (e) {
+          console.warn("Bookmark sync check failed (non-critical)", e);
+        }
+      }
+
+      setIsBookmarked(isBm);
       if (resData.is_completed) setIsCompleted(true);
     } catch (err) {
       setError(err.message);
@@ -86,14 +114,43 @@ export default function ResourceDetail({ resourceId }) {
 
   const fetchReviews = async () => {
     try {
-      // Assuming comments endpoint returns reviews or there is a similar endpoint. 
-      // If reviews are separate, switch URL to /api/resources/${resourceId}/reviews
-      const response = await fetch(`https://itecony-neriva-backend.onrender.com/api/resources/${resourceId}/comments`);
-      if (response.ok) {
-        const data = await response.json();
-        // Handle potentially different response structures
-        setReviews(data.comments || data.reviews || []);
+      const token = localStorage.getItem('authToken');
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+      // 1. Fetch Public Comments (Available Route)
+      let commentsData = [];
+      try {
+        const commentRes = await fetch(`https://itecony-neriva-backend.onrender.com/api/resources/${resourceId}/comments`, { headers });
+        if (commentRes.ok) {
+          const data = await commentRes.json();
+          commentsData = data.comments || data.reviews || [];
+        }
+      } catch (e) { console.warn("Comments fetch failed", e); }
+
+      // 2. Fetch MY Reviews (to ensure I see my own review even if public list lags)
+      // Route: GET /api/users/reviews
+      let myReview = null;
+      if (token) {
+        try {
+          const myRes = await fetch(`https://itecony-neriva-backend.onrender.com/api/users/reviews`, { headers });
+          if (myRes.ok) {
+            const myData = await myRes.json();
+            const myReviewsList = myData.reviews || myData.data || [];
+            myReview = myReviewsList.find(r => String(r.resource_id) === String(resourceId));
+          }
+        } catch (e) { console.warn("My reviews fetch failed", e); }
       }
+
+      // 3. Merge
+      // If we found 'myReview' from the user endpoint, ensure it replaces/adds to the comments list
+      let combined = [...commentsData];
+      if (myReview) {
+        // Remove existing instance if present to update it
+        combined = combined.filter(r => r.id !== myReview.id && r.user_id !== myReview.user_id);
+        combined.unshift(myReview); // Put mine at top
+      }
+
+      setReviews(combined);
     } catch (err) {
       console.error("Error fetching reviews", err);
     }
@@ -119,11 +176,11 @@ export default function ResourceDetail({ resourceId }) {
   const handleSubmitReview = async () => {
     if (reviewText.length < 10) return alert('Review must be at least 10 characters');
     if (userRating === 0) return alert('Please select a rating');
-    
+
     setSubmitting(true);
     try {
       const token = localStorage.getItem('authToken');
-      
+
       // ✅ Determine Method: PUT if editing, POST if creating
       const method = existingUserReview ? 'PUT' : 'POST';
       const endpoint = `https://itecony-neriva-backend.onrender.com/api/resources/${resourceId}/review`;
@@ -131,10 +188,10 @@ export default function ResourceDetail({ resourceId }) {
       const response = await fetch(endpoint, {
         method: method,
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ 
-          rating: userRating, 
-          review_text: reviewText, 
-          would_recommend: wouldRecommend 
+        body: JSON.stringify({
+          rating: userRating,
+          review_text: reviewText,
+          would_recommend: wouldRecommend
         })
       });
 
@@ -215,18 +272,46 @@ export default function ResourceDetail({ resourceId }) {
     try {
       const token = localStorage.getItem('authToken');
       if (!token) return navigate('/login');
+
       const previousState = isBookmarked;
+      // Optimistic Toggle
       setIsBookmarked(!isBookmarked);
-      const method = previousState ? 'DELETE' : 'POST'; 
+
+      const method = previousState ? 'DELETE' : 'POST';
       const response = await fetch(`https://itecony-neriva-backend.onrender.com/api/resources/${resourceId}/bookmark`, {
         method: method,
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: method === 'POST' ? JSON.stringify({ status: 'bookmarked' }) : undefined
       });
-      if (!response.ok) throw new Error('Failed to bookmark');
+
+      const resData = await response.json();
+
+      if (!response.ok) {
+        // Handle "Already bookmarked" case safely without reverting
+        if (method === 'POST' && resData.message && resData.message.toLowerCase().includes('already bookmarked')) {
+          console.warn('Sync issue: Already bookmarked on server. Keeping state as true.');
+          setIsBookmarked(true);
+          return;
+        }
+
+        // Handle "Not found" or "Already deleted" case for DELETE
+        if (method === 'DELETE' && resData.message && resData.message.toLowerCase().includes('not found')) {
+          console.warn('Sync issue: Already removed on server. Keeping state as false.');
+          setIsBookmarked(false);
+          return;
+        }
+
+        throw new Error(resData.message || 'Failed to update bookmark');
+      }
     } catch (err) {
-      setIsBookmarked(!isBookmarked);
-      alert("Failed to update bookmark");
+      console.error("Bookmark Error:", err);
+      // Only revert if it was a genuine error, not a sync validation error
+      // But since we can't easily distinguish generic network errors from logic errors here without the response obj,
+      // we'll revert mainly if it wasn't handled above.
+      // However, if we caught the specific cases above, we returned early.
+      // So here means it's a different error.
+      setIsBookmarked((prev) => !prev);
+      alert("Failed to update bookmark: " + err.message);
     }
   };
 
@@ -265,8 +350,8 @@ export default function ResourceDetail({ resourceId }) {
   };
 
   // ... (renderAnalyticsDashboard and renderTrendChart remain same as previous step) ...
-  const renderTrendChart = (data = [], label) => ( /* omitted for brevity, same as before */ <div/> );
-  const renderAnalyticsDashboard = () => ( /* omitted for brevity, same as before */ <div/> );
+  const renderTrendChart = (data = [], label) => ( /* omitted for brevity, same as before */ <div />);
+  const renderAnalyticsDashboard = () => ( /* omitted for brevity, same as before */ <div />);
 
   if (loading) return <div className="flex justify-center py-20"><div className="animate-spin w-10 h-10 border-4 border-blue-600 rounded-full border-t-transparent"></div></div>;
   if (error) return <div className="text-center py-20 text-red-600">Error: {error}</div>;
@@ -280,7 +365,7 @@ export default function ResourceDetail({ resourceId }) {
   return (
     <div className="bg-white w-full min-h-[600px] flex flex-col">
       <main className="flex-1 w-full max-w-7xl mx-auto px-6 py-8">
-        
+
         {/* Breadcrumb */}
         <div className="flex flex-wrap items-center gap-2 mb-8 text-sm">
           <button onClick={() => navigate('/resources')} className="text-gray-500 hover:text-blue-600">Resources</button>
@@ -289,7 +374,7 @@ export default function ResourceDetail({ resourceId }) {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
-          
+
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-10">
             {/* Header Content ... same as before */}
@@ -323,7 +408,7 @@ export default function ResourceDetail({ resourceId }) {
             {activeTab !== 'analytics' && (
               <div className="pt-8 border-t border-gray-200">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Reviews & Comments</h2>
-                
+
                 {/* ✅ UPDATED: Review Form with Edit/Cancel Logic */}
                 <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 mb-8 transition-all">
                   <div className="flex justify-between items-center mb-3">
@@ -348,10 +433,10 @@ export default function ResourceDetail({ resourceId }) {
 
                   {/* Recommend Checkbox */}
                   <div className="flex items-center gap-2 mb-4">
-                    <input 
-                      type="checkbox" 
-                      id="recommend" 
-                      checked={wouldRecommend} 
+                    <input
+                      type="checkbox"
+                      id="recommend"
+                      checked={wouldRecommend}
                       onChange={(e) => setWouldRecommend(e.target.checked)}
                       className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                     />
@@ -365,7 +450,7 @@ export default function ResourceDetail({ resourceId }) {
                     className="w-full p-3 bg-white rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none mb-3"
                     rows="3"
                   />
-                  
+
                   <div className="flex justify-end gap-2">
                     {existingUserReview && (
                       <button onClick={() => {
@@ -406,9 +491,9 @@ export default function ResourceDetail({ resourceId }) {
                               </div>
                             )}
                           </div>
-                          
+
                           {/* ✅ HELPFUL BUTTON */}
-                          <button 
+                          <button
                             onClick={() => handleMarkHelpful(review.id)}
                             className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 transition-colors bg-gray-50 px-2 py-1 rounded-md border border-gray-100 hover:border-blue-200"
                           >
@@ -416,7 +501,7 @@ export default function ResourceDetail({ resourceId }) {
                             Helpful ({review.helpful_count || 0})
                           </button>
                         </div>
-                        
+
                         <p className="text-gray-600 text-sm mt-1">{review.review_text || review.comment_text}</p>
                       </div>
                     </div>
@@ -436,9 +521,9 @@ export default function ResourceDetail({ resourceId }) {
                 {isCompleted ? (<div className="flex flex-col items-center justify-center py-3 rounded-lg border border-green-200 bg-green-50 text-green-700 text-sm font-medium cursor-default"><CheckCircle className="w-5 h-5 mb-1" />Completed</div>) : (<button onClick={() => setShowCompleteModal(true)} className="flex flex-col items-center justify-center py-3 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-green-50 hover:text-green-700 transition-colors text-sm font-medium"><CheckCircle className="w-5 h-5 mb-1" />Complete</button>)}
               </div>
               <div className="pt-6 border-t border-gray-100 space-y-4">
-                <div className="flex justify-between items-center text-sm"><span className="text-gray-500 flex items-center gap-2"><Clock className="w-4 h-4"/> Duration</span><span className="font-semibold text-gray-900">{estimatedTime}</span></div>
-                <div className="flex justify-between items-center text-sm"><span className="text-gray-500 flex items-center gap-2"><BarChart className="w-4 h-4"/> Level</span><span className="font-semibold text-gray-900 capitalize">{resource.difficulty_level}</span></div>
-                <div className="flex justify-between items-center text-sm"><span className="text-gray-500 flex items-center gap-2"><Share2 className="w-4 h-4"/> Type</span><span className="font-semibold text-gray-900 capitalize">{resource.resource_type}</span></div>
+                <div className="flex justify-between items-center text-sm"><span className="text-gray-500 flex items-center gap-2"><Clock className="w-4 h-4" /> Duration</span><span className="font-semibold text-gray-900">{estimatedTime}</span></div>
+                <div className="flex justify-between items-center text-sm"><span className="text-gray-500 flex items-center gap-2"><BarChart className="w-4 h-4" /> Level</span><span className="font-semibold text-gray-900 capitalize">{resource.difficulty_level}</span></div>
+                <div className="flex justify-between items-center text-sm"><span className="text-gray-500 flex items-center gap-2"><Share2 className="w-4 h-4" /> Type</span><span className="font-semibold text-gray-900 capitalize">{resource.resource_type}</span></div>
               </div>
             </div>
           </aside>

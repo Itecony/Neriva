@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  BookOpen, 
-  Users, 
+import {
+  LayoutDashboard,
+  BookOpen,
+  Users,
   Network,
   Settings,
   LogOut,
@@ -16,7 +16,7 @@ import {
 export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [profile, setProfile] = useState(null);
-  
+
   // ✅ NEW: State to store alert counts for specific sections
   const [alerts, setAlerts] = useState({
     mentorship: 0,
@@ -43,7 +43,7 @@ export default function Sidebar() {
     try {
       const token = localStorage.getItem('authToken');
       if (!token) return;
-      
+
       const response = await fetch('https://itecony-neriva-backend.onrender.com/api/profile', {
         headers: { 'Authorization': `Bearer ${token}` },
       });
@@ -83,7 +83,7 @@ export default function Sidebar() {
 
   const handleLogout = (e) => {
     e.preventDefault();
-    localStorage.clear(); 
+    localStorage.clear();
     navigate('/login');
   };
 
@@ -108,7 +108,7 @@ export default function Sidebar() {
   ];
 
   return (
-    <aside 
+    <aside
       className={`
         hidden md:flex 
         h-full bg-gradient-to-b from-teal-600 via-cyan-700 to-blue-800 
@@ -116,16 +116,16 @@ export default function Sidebar() {
         ${isCollapsed ? 'w-20' : 'w-64'}
       `}
     >
-      
+
       {/* --- Header Section --- */}
       <div className={`relative flex flex-col items-center transition-all duration-300 ${isCollapsed ? 'pt-6 pb-4' : 'pt-6 pb-6 px-4'}`}>
-        
+
         {/* Logo & Toggle */}
         <div className={`w-full flex items-center transition-all duration-300 ${isCollapsed ? 'flex-col gap-4 mb-4' : 'justify-between mb-5 px-1'}`}>
-          <img 
-            src={isCollapsed ? "/assets/Neriva Favicon Secondary.png" : "/assets/Neriva Main logo Dark UI.png"} 
-            alt="Neriva" 
-            className={`object-contain transition-all duration-300 ${isCollapsed ? 'h-8 w-8' : 'h-8 w-auto'}`} 
+          <img
+            src={isCollapsed ? "/assets/Neriva Favicon Secondary.png" : "/assets/Neriva Main logo Dark UI.png"}
+            alt="Neriva"
+            className={`object-contain transition-all duration-300 ${isCollapsed ? 'h-8 w-8' : 'h-10 w-auto'}`}
           />
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
@@ -141,15 +141,13 @@ export default function Sidebar() {
             <img
               src={profile.avatar || profile.profileImage}
               alt={profile.firstName}
-              className={`rounded-full object-cover border-2 border-white/30 group-hover:border-white transition-all shadow-lg bg-white/10 ${
-                isCollapsed ? 'w-10 h-10' : 'w-16 h-16'
-              }`}
-              onError={(e) => { e.target.onerror = null; e.target.src = ""; }} 
+              className={`rounded-full object-cover border-2 border-white/30 group-hover:border-white transition-all shadow-lg bg-white/10 ${isCollapsed ? 'w-10 h-10' : 'w-16 h-16'
+                }`}
+              onError={(e) => { e.target.onerror = null; e.target.src = ""; }}
             />
           ) : (
-            <div className={`rounded-full bg-white/10 flex items-center justify-center font-bold text-white border-2 border-white/30 group-hover:border-white transition-all shadow-lg backdrop-blur-sm ${
-              isCollapsed ? 'w-10 h-10 text-sm' : 'w-16 h-16 text-xl'
-            }`}>
+            <div className={`rounded-full bg-white/10 flex items-center justify-center font-bold text-white border-2 border-white/30 group-hover:border-white transition-all shadow-lg backdrop-blur-sm ${isCollapsed ? 'w-10 h-10 text-sm' : 'w-16 h-16 text-xl'
+              }`}>
               {getInitials()}
             </div>
           )}
@@ -180,7 +178,7 @@ export default function Sidebar() {
           const isActive = item.href === '/dreamboard'
             ? location.pathname === '/dreamboard'
             : location.pathname === item.href || location.pathname.startsWith(item.href + '/');
-          
+
           // ✅ Get Alert Count for this item
           const alertCount = alerts[item.id] || 0;
 
@@ -188,25 +186,24 @@ export default function Sidebar() {
             <Link
               key={index}
               to={item.href}
-              className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative ${
-                isActive 
-                  ? 'bg-white/15 text-white shadow-sm font-semibold' 
+              className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative ${isActive
+                  ? 'bg-white/15 text-white shadow-sm font-semibold'
                   : 'text-white/80 hover:bg-white/5 hover:text-white'
-              } ${isCollapsed ? 'justify-center' : ''}`}
+                } ${isCollapsed ? 'justify-center' : ''}`}
             >
               <div className="relative">
                 <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-teal-200' : ''}`} />
-                
+
                 {/* ✅ ALERT BADGE (Collapsed Mode) */}
                 {isCollapsed && alertCount > 0 && (
                   <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 border-2 border-teal-700 rounded-full"></span>
                 )}
               </div>
-              
+
               {!isCollapsed && (
                 <>
                   <span className="text-sm tracking-wide flex-1">{item.label}</span>
-                  
+
                   {/* ✅ ALERT BADGE (Expanded Mode) */}
                   {alertCount > 0 && (
                     <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
@@ -215,7 +212,7 @@ export default function Sidebar() {
                   )}
                 </>
               )}
-              
+
               {isCollapsed && (
                 <div className="absolute left-14 bg-gray-900 text-white text-xs px-2 py-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-lg border border-white/10">
                   {item.label}

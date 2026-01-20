@@ -15,7 +15,7 @@ import LandingPage from "./Pages/LandingPage/LandingPage";
 import Dreamboard from "./Pages/User/Dreamboard/Dreamboard.jsx";
 
 // Profile Components
-import Profile from "./UserDetail/profile.jsx"; 
+import Profile from "./UserDetail/profile.jsx";
 
 // Resource Components
 import ResourceHub from "./Pages/User/Resource/ResourceHub.jsx";
@@ -28,9 +28,7 @@ import Networking from "./Pages/User/Networking/Networking.jsx";
 import MentorshipHub from "./Pages/User/Mentorship/MentorshipHub.jsx";
 import MentorProfileView from "./Pages/User/Mentorship/MentorProfileView.jsx";
 import MentorProfilePersonal from "./Pages/User/Mentorship/MentorProfilePersonal.jsx";
-import MentorRegistrationForm from "./Pages/User/Mentorship/MentorRegistrationForm.jsx";
 import MentorApplicationReview from "./Pages/User/Mentorship/MentorApplicationReview.jsx";
-
 // ---------------------------------------------------------
 // ✅ Main App Component with Routing
 // ---------------------------------------------------------
@@ -63,11 +61,11 @@ function App() {
       >
         {/* --- Dreamboard Section --- */}
         <Route path="/dreamboard" element={<Dreamboard />} />
-        
+
         {/* Networking (Main & Specific Chat) */}
         <Route path="/dreamboard/networking" element={<Networking />} />
         <Route path="/dreamboard/networking/messages/:conversationId" element={<Networking />} />
-        
+
         {/* Mentorship Hub */}
         <Route path="/dreamboard/mentorship" element={<MentorshipHub />} />
 
@@ -86,10 +84,11 @@ function App() {
         <Route path="/mentor/profile" element={<MentorProfilePersonal />} />
         {/* Viewing a Mentor */}
         <Route path="/mentor/:mentorId" element={<MentorProfileViewWithParams />} />
-        {/* Registration */}
-        <Route path="/become-mentor" element={<MentorRegistrationForm />} />
         {/* Admin: Mentor Application Reviews */}
         <Route path="/admin/mentor-applications" element={<MentorApplicationReview />} />
+
+        {/* User Application Flow */}
+        <Route path="/become-mentor" element={<MentorApplicationReview />} />
       </Route>
 
     </Routes>
