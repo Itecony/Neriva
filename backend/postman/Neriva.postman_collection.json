@@ -1,0 +1,133 @@
+{
+  "info": {
+    "name": "Neriva API Tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "neriva-backend-tests"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000" },
+    { "key": "token", "value": "" },
+    { "key": "adminToken", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "targetUserId", "value": "" },
+    { "key": "applicationId", "value": "" },
+    { "key": "notificationIds", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/health"
+      }
+    },
+    {
+      "name": "Get My Notifications",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": "{{baseUrl}}/api/notifications"
+      }
+    },
+    {
+      "name": "Mark Notifications Read",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"notificationIds\": [{{notificationIds}}]\n}"
+        },
+        "url": "{{baseUrl}}/api/notifications/mark-read"
+      }
+    },
+    {
+      "name": "Get Admin Mentor Notifications (unread)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+        ],
+        "url": "{{baseUrl}}/api/admin/notifications/mentor-applications?unread_only=true"
+      }
+    },
+    {
+      "name": "Follow User",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/api/users/{{targetUserId}}/follow"
+      }
+    },
+    {
+      "name": "Unfollow User",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": "{{baseUrl}}/api/users/{{targetUserId}}/follow"
+      }
+    },
+    {
+      "name": "Get Followers",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/users/{{userId}}/followers?page=1&limit=20"
+      }
+    },
+    {
+      "name": "Get Following",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/users/{{userId}}/following?page=1&limit=20"
+      }
+    },
+    {
+      "name": "Get Follower Count",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/users/{{userId}}/follower-count"
+      }
+    },
+    {
+      "name": "Submit Mentor Application",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"essay\": \"Sample mentor essay (100+ chars) describing experience and teaching approach.\",\n  \"selected_projects\": [\"project-uuid-1\", \"project-uuid-2\", \"project-uuid-3\"],\n  \"domains\": [\"Web Development\"]\n}"
+        },
+        "url": "{{baseUrl}}/api/mentors/apply"
+      }
+    },
+    {
+      "name": "Admin Approve Application",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": { "mode": "raw", "raw": "{ \"status\": \"approved\", \"admin_notes\": \"Approved via Postman test\" }" },
+        "url": "{{baseUrl}}/api/admin/mentor-applications/{{applicationId}}/review"
+      }
+    }
+  ]
+}

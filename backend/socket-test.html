@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neriva Chat - Real-time Messaging</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 900px;
+            height: 600px;
+            display: flex;
+            overflow: hidden;
+        }
+        
+        .login-screen {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .login-screen.hidden {
+            display: none;
+        }
+        
+        .login-screen h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        
+        .login-screen p {
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 14px;
+        }
+        
+        .user-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .login-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+            min-width: 150px;
+        }
+        
+        .login-btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .chat-area {
+            display: flex;
+            width: 100%;
+            gap: 0;
+        }
+        
+        .chat-area.hidden {
+            display: none;
+        }
+        
+        .sidebar {
+            width: 280px;
+            background: #f8f9fa;
+            border-right: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            background: #667eea;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .sidebar-header h2 {
+            font-size: 18px;
+        }
+        
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.3s;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .users-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        .user-item {
+            padding: 12px;
+            margin-bottom: 5px;
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .user-item:hover {
+            background: #e8eaf6;
+            border-color: #667eea;
+        }
+        
+        .user-item.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .chat-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-header {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .chat-header h2 {
+            color: #333;
+            font-size: 18px;
+        }
+        
+        .chat-header .status {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: white;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .message.own {
+            align-items: flex-end;
+        }
+        
+        .message.other {
+            align-items: flex-start;
+        }
+        
+        .message-bubble {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            word-wrap: break-word;
+        }
+        
+        .message.own .message-bubble {
+            background: #667eea;
+            color: white;
+            border-radius: 12px 0 12px 12px;
+        }
+        
+        .message.other .message-bubble {
+            background: #e8eaf6;
+            color: #333;
+            border-radius: 0 12px 12px 12px;
+        }
+        
+        .message-time {
+            font-size: 11px;
+            color: #999;
+            margin-top: 4px;
+        }
+        
+        .chat-input-area {
+            padding: 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #ddd;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .input-wrapper {
+            flex: 1;
+            display: flex;
+            gap: 10px;
+        }
+        
+        #messageInput {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: none;
+            max-height: 80px;
+        }
+        
+        #messageInput:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .send-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+            min-width: 60px;
+        }
+        
+        .send-btn:hover {
+            background: #5568d3;
+        }
+        
+        .send-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .empty-state {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: #999;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div class="container">
+        <div class="login-screen" id="loginScreen">
+            <h1>💬 Neriva Chat</h1>
+            <p>Select a user to get started</p>
+            <div class="user-buttons">
+                <button class="login-btn" onclick="login('jake')">👤 Jake</button>
+                <button class="login-btn" onclick="login('lisa')">👤 Lisa</button>
+            </div>
+        </div>
+        
+        <!-- Chat Area -->
+        <div class="chat-area hidden" id="chatArea">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <h2 id="currentUser">Jake</h2>
+                    <button class="logout-btn" onclick="logout()">Logout</button>
+                </div>
+                <div class="users-list" id="usersList"></div>
+            </div>
+            
+            <!-- Main Chat -->
+            <div class="chat-main">
+                <div class="chat-header">
+                    <h2 id="chatWithName">Select a user</h2>
+                    <div class="status" id="chatStatus">● Offline</div>
+                </div>
+                
+                <div class="chat-messages" id="messagesContainer">
+                    <div class="empty-state">Select a user to start chatting</div>
+                </div>
+                
+                <div class="chat-input-area">
+                    <div class="input-wrapper">
+                        <textarea id="messageInput" placeholder="Type a message..." rows="1"></textarea>
+                        <button class="send-btn" onclick="sendMessage()">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SERVER_URL = 'http://localhost:4000';
+        
+        let socket = null;
+        let currentUser = null;
+        let selectedUser = null;
+        let messages = {};
+        
+        // Initialize demo users
+        const users = {
+            jake: { id: 1, name: 'Jake' },
+            lisa: { id: 2, name: 'Lisa' }
+        };
+        
+        function login(username) {
+            currentUser = username;
+            messages = JSON.parse(localStorage.getItem('messages') || '{}');
+            
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('chatArea').classList.remove('hidden');
+            document.getElementById('currentUser').textContent = users[username].name;
+            
+            renderUsersList();
+            connectSocket();
+        }
+        
+        function logout() {
+            currentUser = null;
+            selectedUser = null;
+            socket?.disconnect();
+            
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('chatArea').classList.add('hidden');
+        }
+        
+        function renderUsersList() {
+            const usersList = document.getElementById('usersList');
+            usersList.innerHTML = '';
+            
+            for (const [username, user] of Object.entries(users)) {
+                if (username !== currentUser) {
+                    const div = document.createElement('div');
+                    div.className = `user-item ${selectedUser === username ? 'active' : ''}`;
+                    div.textContent = user.name;
+                    div.onclick = () => selectUser(username);
+                    usersList.appendChild(div);
+                }
+            }
+        }
+        
+        function selectUser(username) {
+            selectedUser = username;
+            renderUsersList();
+            renderMessages();
+            
+            document.getElementById('chatWithName').textContent = `💬 Chat with ${users[username].name}`;
+            document.getElementById('messageInput').focus();
+        }
+        
+        function renderMessages() {
+            const container = document.getElementById('messagesContainer');
+            
+            if (!selectedUser) {
+                container.innerHTML = '<div class="empty-state">Select a user to start chatting</div>';
+                return;
+            }
+            
+            const conversationKey = getConversationKey(currentUser, selectedUser);
+            const conversationMessages = messages[conversationKey] || [];
+            
+            container.innerHTML = '';
+            
+            conversationMessages.forEach(msg => {
+                const div = document.createElement('div');
+                div.className = `message ${msg.sender === currentUser ? 'own' : 'other'}`;
+                
+                const bubble = document.createElement('div');
+                bubble.className = 'message-bubble';
+                bubble.textContent = msg.text;
+                
+                const time = document.createElement('div');
+                time.className = 'message-time';
+                time.textContent = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                div.appendChild(bubble);
+                div.appendChild(time);
+                container.appendChild(div);
+            });
+            
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function sendMessage() {
+            if (!selectedUser) {
+                alert('Please select a user to chat with');
+                return;
+            }
+            
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+            
+            if (!text) return;
+            
+            const message = {
+                sender: currentUser,
+                recipient: selectedUser,
+                text: text,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Save to local storage
+            const conversationKey = getConversationKey(currentUser, selectedUser);
+            if (!messages[conversationKey]) {
+                messages[conversationKey] = [];
+            }
+            messages[conversationKey].push(message);
+            localStorage.setItem('messages', JSON.stringify(messages));
+            
+            // Send via Socket.IO if connected
+            if (socket && socket.connected) {
+                socket.emit('message', message);
+            }
+            
+            input.value = '';
+            renderMessages();
+        }
+        
+        function getConversationKey(user1, user2) {
+            return [user1, user2].sort().join('_');
+        }
+        
+        function connectSocket() {
+            socket = io(SERVER_URL, {
+                withCredentials: true,
+                transports: ['websocket', 'polling'],
+                reconnection: true
+            });
+            
+            socket.on('connect', () => {
+                document.getElementById('chatStatus').textContent = '● Online';
+                document.getElementById('chatStatus').style.color = '#28a745';
+                socket.emit('user_connected', { username: currentUser });
+            });
+            
+            socket.on('disconnect', () => {
+                document.getElementById('chatStatus').textContent = '● Offline';
+                document.getElementById('chatStatus').style.color = '#999';
+            });
+            
+            socket.on('message', (msg) => {
+                // Check if message is for the current conversation
+                if ((msg.sender === currentUser && msg.recipient === selectedUser) ||
+                    (msg.sender === selectedUser && msg.recipient === currentUser)) {
+                    const conversationKey = getConversationKey(msg.sender, msg.recipient);
+                    if (!messages[conversationKey]) {
+                        messages[conversationKey] = [];
+                    }
+                    messages[conversationKey].push(msg);
+                    localStorage.setItem('messages', JSON.stringify(messages));
+                    renderMessages();
+                }
+            });
+        }
+        
+        // Auto-select first user on login for demo
+        window.addEventListener('load', () => {
+            // Can add auto-login here if needed
+        });
+        
+        // Auto-save messages when typing
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('messageInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
