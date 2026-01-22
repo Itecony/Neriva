@@ -187,8 +187,8 @@ export default function Sidebar() {
               key={index}
               to={item.href}
               className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative ${isActive
-                  ? 'bg-white/15 text-white shadow-sm font-semibold'
-                  : 'text-white/80 hover:bg-white/5 hover:text-white'
+                ? 'bg-white/15 text-white shadow-sm font-semibold'
+                : 'text-white/80 hover:bg-white/5 hover:text-white'
                 } ${isCollapsed ? 'justify-center' : ''}`}
             >
               <div className="relative">
