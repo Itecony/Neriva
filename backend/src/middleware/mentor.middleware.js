@@ -5,13 +5,15 @@ const { MentorProfile, Resource, User } = require('../models');
  */
 const isMentor = async (req, res, next) => {
   try {
-    if (!req.user || !req.user.is_mentor) {
-      return res.status(403).json({
-        success: false,
-        message: 'Only verified mentors can perform this action'
-      });
+    // Allow if user is mentor OR admin
+    if (req.user && (req.user.is_mentor || req.user.role === 'admin')) {
+      return next();
     }
-    next();
+
+    return res.status(403).json({
+      success: false,
+      message: 'Only verified mentors can perform this action'
+    });
   } catch (error) {
     console.error('isMentor middleware error:', error);
     return res.status(500).json({
@@ -28,14 +30,14 @@ const isAdmin = async (req, res, next) => {
   try {
     const isDevMode = process.env.NODE_ENV !== 'production';
     const isAdminUser = req.user && req.user.role === 'admin';
-    
+
     if (!req.user) {
       return res.status(403).json({
         success: false,
         message: 'Only admins can perform this action'
       });
     }
-    
+
     // In development, allow first user (by ID or email) to act as admin for testing
     // In production, strictly require admin role
     if (isDevMode && !isAdminUser) {
@@ -43,14 +45,14 @@ const isAdmin = async (req, res, next) => {
       // Allow in dev mode for testing
       return next();
     }
-    
+
     if (!isAdminUser) {
       return res.status(403).json({
         success: false,
         message: 'Only admins can perform this action'
       });
     }
-    
+
     next();
   } catch (error) {
     console.error('isAdmin middleware error:', error);
@@ -95,7 +97,7 @@ const canApplyForMentor = async (req, res, next) => {
     if (user.mentor_application_cooldown_until) {
       const now = new Date();
       const cooldownEnd = new Date(user.mentor_application_cooldown_until);
-      
+
       if (now < cooldownEnd) {
         const daysLeft = Math.ceil((cooldownEnd - now) / (1000 * 60 * 60 * 24));
         return res.status(403).json({
@@ -155,6 +157,11 @@ const isResourceOwner = async (req, res, next) => {
  */
 const checkResourceLimit = async (req, res, next) => {
   try {
+    // Admins have no limit
+    if (req.user && req.user.role === 'admin') {
+      return next();
+    }
+
     const mentorProfile = await MentorProfile.findOne({
       where: { user_id: req.user.id }
     });

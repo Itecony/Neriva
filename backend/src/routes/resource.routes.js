@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, optionalAuth } = require('../middleware/auth');
 const { isMentor, isResourceOwner, checkResourceLimit } = require('../middleware/mentor.middleware');
 const resourceController = require('../controllers/resource.controller');
 const resourceInteractionController = require('../controllers/resourceInteraction.controller');
@@ -44,6 +44,7 @@ router.get(
 // Get specific resource (public)
 router.get(
   '/resources/:id',
+  optionalAuth,
   resourceController.getResourceById
 );
 
@@ -125,6 +126,12 @@ router.post(
 router.get(
   '/resources/:id/comments',
   resourceInteractionController.getComments
+);
+
+// Get all reviews for resource (public)
+router.get(
+  '/resources/:id/reviews',
+  resourceInteractionController.getReviews
 );
 
 // Mark review as helpful

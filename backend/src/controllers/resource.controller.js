@@ -1,4 +1,4 @@
-const { Resource, User, MentorProfile, ResourceBookmark, ResourceReview } = require('../models');
+const { Resource, User, MentorProfile, ResourceBookmark, ResourceReview, ResourceCompletion } = require('../models');
 const { Op } = require('sequelize');
 
 /**
@@ -390,9 +390,36 @@ const getResourceById = async (req, res) => {
       await mentorProfile.save();
     }
 
+    // Check for user interactions (bookmark/completion)
+    let is_bookmarked = false;
+    let is_completed = false;
+
+    if (req.user) {
+      const bookmark = await ResourceBookmark.findOne({
+        where: { user_id: req.user.id, resource_id: id }
+      });
+      if (bookmark) {
+        is_bookmarked = true;
+        if (bookmark.status === 'completed') is_completed = true;
+      }
+
+      // Double check completion table if not found in bookmark status
+      if (!is_completed) {
+        const { ResourceCompletion } = require('../models'); // lazy load if needed or ensure imported at top
+        const completion = await ResourceCompletion.findOne({
+          where: { user_id: req.user.id, resource_id: id }
+        });
+        if (completion) is_completed = true;
+      }
+    }
+
+    const resourceData = resource.toJSON();
+    resourceData.is_bookmarked = is_bookmarked;
+    resourceData.is_completed = is_completed;
+
     return res.status(200).json({
       success: true,
-      data: resource
+      data: resourceData
     });
   } catch (error) {
     console.error('Get resource by ID error:', error);

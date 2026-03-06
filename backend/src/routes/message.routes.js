@@ -5,11 +5,13 @@ const {
   createGroupConversation,
   getConversations,
   getMessages,
-  sendMessage
+  sendMessage,
+  getUnreadCount // ✅ Import
 } = require('../controllers/message.controller');
 const { authenticateToken } = require('../middleware/auth');  // ← Changed
 
 // All routes are protected
+router.get('/unread-count', authenticateToken, getUnreadCount); // ✅ New route
 router.get('/conversations', authenticateToken, getConversations);
 router.post('/conversations/direct', authenticateToken, getOrCreateDirectConversation);
 router.post('/conversations/group', authenticateToken, createGroupConversation);

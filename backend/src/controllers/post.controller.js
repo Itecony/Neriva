@@ -1,4 +1,5 @@
 const { Post, User, Comment, PostLike } = require('../models');
+const { Op } = require('sequelize');
 const PostImage = require('../models/PostImage');
 const path = require('path');
 const fs = require('fs');
@@ -6,12 +7,30 @@ const fs = require('fs');
 // Get all posts (UPDATED - include images, filter by userId if provided)
 const getPosts = async (req, res) => {
   try {
-    const { userId, page = 1, limit = 20 } = req.query;
+    const { userId, page = 1, limit = 20, interests } = req.query;
     const offset = (page - 1) * limit;
 
     const whereClause = {};
     if (userId) {
       whereClause.user_id = userId;
+    }
+
+    if (interests) {
+      const interestArray = typeof interests === 'string' ? interests.split(',') : interests;
+
+      // Robust matching:
+      // 1. Tags overlap (exact match on tag)
+      // 2. Title contains interest (fuzzy)
+      // 3. Content contains interest (fuzzy)
+      whereClause[Op.or] = [
+        { tags: { [Op.overlap]: interestArray } },
+        ...interestArray.map(interest => ({
+          title: { [Op.iLike]: `%${interest}%` }
+        })),
+        ...interestArray.map(interest => ({
+          content: { [Op.iLike]: `%${interest}%` }
+        }))
+      ];
     }
 
     const { count, rows: posts } = await Post.findAndCountAll({
@@ -34,9 +53,32 @@ const getPosts = async (req, res) => {
       offset: parseInt(offset)
     });
 
+    // ✅ POST-PROCESS: Attach is_liked for current user
+    let postsData = posts.map(p => p.toJSON());
+
+    if (req.user && req.user.id) {
+      const postIds = postsData.map(p => p.id);
+      const likes = await PostLike.findAll({
+        where: {
+          user_id: req.user.id,
+          post_id: postIds
+        },
+        attributes: ['post_id']
+      });
+
+      const likedPostIds = new Set(likes.map(l => l.post_id));
+
+      postsData = postsData.map(p => ({
+        ...p,
+        is_liked: likedPostIds.has(p.id)
+      }));
+    } else {
+      postsData = postsData.map(p => ({ ...p, is_liked: false }));
+    }
+
     res.status(200).json({
       success: true,
-      data: posts,
+      data: postsData,
       pagination: {
         total: count,
         page: parseInt(page),
@@ -71,7 +113,30 @@ const getTopPosts = async (req, res) => {
       limit: 10
     });
 
-    res.status(200).json({ posts });
+    // ✅ POST-PROCESS: Attach is_liked for current user
+    let postsData = posts.map(p => p.toJSON());
+
+    if (req.user && req.user.id) {
+      const postIds = postsData.map(p => p.id);
+      const likes = await PostLike.findAll({
+        where: {
+          user_id: req.user.id,
+          post_id: postIds
+        },
+        attributes: ['post_id']
+      });
+
+      const likedPostIds = new Set(likes.map(l => l.post_id));
+
+      postsData = postsData.map(p => ({
+        ...p,
+        is_liked: likedPostIds.has(p.id)
+      }));
+    } else {
+      postsData = postsData.map(p => ({ ...p, is_liked: false }));
+    }
+
+    res.status(200).json({ posts: postsData });
   } catch (error) {
     console.error('Get top posts error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -114,7 +179,21 @@ const getPostById = async (req, res) => {
       return res.status(404).json({ message: 'Post not found' });
     }
 
-    res.status(200).json({ post });
+    // ✅ NEW: Check if current user liked this
+    let is_liked = false;
+    // Check if we have an authenticated user (might be optional in some flows, but usually strictly protected)
+    if (req.user && req.user.id) {
+      const like = await PostLike.findOne({
+        where: { post_id: id, user_id: req.user.id }
+      });
+      is_liked = !!like;
+    }
+
+    // Convert to JSON and attach virtual field
+    const postData = post.toJSON();
+    postData.is_liked = is_liked;
+
+    res.status(200).json({ post: postData });
   } catch (error) {
     console.error('Get post error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -140,8 +219,8 @@ const createPost = async (req, res) => {
 
     // Validate images array
     if (images.length > 5) {
-      return res.status(400).json({ 
-        message: 'Maximum 5 images allowed per post' 
+      return res.status(400).json({
+        message: 'Maximum 5 images allowed per post'
       });
     }
 
@@ -182,9 +261,9 @@ const createPost = async (req, res) => {
       ]
     });
 
-    res.status(201).json({ 
-      message: 'Post created successfully', 
-      post: postWithAuthor 
+    res.status(201).json({
+      message: 'Post created successfully',
+      post: postWithAuthor
     });
   } catch (error) {
     console.error('Create post error:', error);
@@ -211,8 +290,8 @@ const updatePost = async (req, res) => {
 
     // Validate images if provided
     if (images && images.length > 5) {
-      return res.status(400).json({ 
-        message: 'Maximum 5 images allowed per post' 
+      return res.status(400).json({
+        message: 'Maximum 5 images allowed per post'
       });
     }
 
@@ -260,9 +339,9 @@ const updatePost = async (req, res) => {
       ]
     });
 
-    res.status(200).json({ 
-      message: 'Post updated successfully', 
-      post: updatedPost 
+    res.status(200).json({
+      message: 'Post updated successfully',
+      post: updatedPost
     });
   } catch (error) {
     console.error('Update post error:', error);
@@ -317,14 +396,14 @@ const likePost = async (req, res) => {
 
     // Create like
     await PostLike.create({ post_id: id, user_id: userId });
-    
+
     // Increment post likes count
     await post.increment('likes');
     await post.reload();
 
-    res.status(200).json({ 
-      message: 'Post liked', 
-      likes: post.likes 
+    res.status(200).json({
+      message: 'Post liked',
+      likes: post.likes
     });
   } catch (error) {
     console.error('Like post error:', error);
@@ -353,14 +432,14 @@ const unlikePost = async (req, res) => {
     }
 
     await like.destroy();
-    
+
     // Decrement post likes count
     await post.decrement('likes');
     await post.reload();
 
-    res.status(200).json({ 
-      message: 'Post unliked', 
-      likes: post.likes 
+    res.status(200).json({
+      message: 'Post unliked',
+      likes: post.likes
     });
   } catch (error) {
     console.error('Unlike post error:', error);
@@ -382,9 +461,9 @@ const viewPost = async (req, res) => {
     await post.increment('views');
     await post.reload();
 
-    res.status(200).json({ 
-      message: 'Post viewed', 
-      views: post.views 
+    res.status(200).json({
+      message: 'Post viewed',
+      views: post.views
     });
   } catch (error) {
     console.error('View post error:', error);
@@ -425,9 +504,9 @@ const addComment = async (req, res) => {
       ]
     });
 
-    res.status(201).json({ 
-      message: 'Comment added', 
-      comment: commentWithAuthor 
+    res.status(201).json({
+      message: 'Comment added',
+      comment: commentWithAuthor
     });
   } catch (error) {
     console.error('Add comment error:', error);
@@ -518,9 +597,9 @@ const uploadImage = async (req, res) => {
     });
   } catch (error) {
     console.error('Upload image error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: 'Failed to upload image',
-      error: error.message 
+      error: error.message
     });
   }
 };
@@ -546,9 +625,9 @@ const deleteImage = async (req, res) => {
 
     // Find and delete the image
     const image = await PostImage.findOne({
-      where: { 
+      where: {
         id: imageId,
-        post_id: postId 
+        post_id: postId
       }
     });
 
@@ -580,15 +659,15 @@ const deleteImage = async (req, res) => {
       await images[i].update({ position: i });
     }
 
-    res.status(200).json({ 
+    res.status(200).json({
       message: 'Image deleted successfully',
       remaining_images: remainingImages
     });
   } catch (error) {
     console.error('Delete image error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: 'Failed to delete image',
-      error: error.message 
+      error: error.message
     });
   }
 };
@@ -614,9 +693,9 @@ const getPostImages = async (req, res) => {
     });
   } catch (error) {
     console.error('Get post images error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: 'Failed to retrieve images',
-      error: error.message 
+      error: error.message
     });
   }
 };

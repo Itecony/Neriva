@@ -24,6 +24,14 @@ const MentorApplication = sequelize.define('MentorApplication', {
       len: [100, 5000]
     }
   },
+  teaching_style: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  mentorship_goals: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
   selected_projects: {
     type: DataTypes.JSONB,
     allowNull: false,

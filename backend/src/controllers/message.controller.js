@@ -5,6 +5,54 @@ const ConversationParticipant = require('../models/ConversationParticipant');
 const User = require('../models/User');
 const { Op } = require('sequelize');
 
+// Get unread message count
+const getUnreadCount = async (req, res) => {
+  try {
+    const userId = req.user.id; // Verify type (int vs uuid) depending on your auth
+
+    // Find all conversations the user is in
+    const participations = await ConversationParticipant.findAll({
+      where: { user_id: userId },
+      attributes: ['conversation_id', 'last_read_at']
+    });
+
+    if (!participations.length) {
+      return res.status(200).json({ count: 0 });
+    }
+
+    const conversationIds = participations.map(p => p.conversation_id);
+
+    // Find conversations updated AFTER the user last read them
+    const conversations = await Conversation.findAll({
+      where: {
+        id: conversationIds
+      },
+      attributes: ['id', 'updated_at']
+    });
+
+    let unreadCount = 0;
+
+    // Map for O(1) lookup
+    const readMap = {};
+    participations.forEach(p => {
+      readMap[p.conversation_id] = p.last_read_at;
+    });
+
+    conversations.forEach(c => {
+      const lastRead = readMap[c.id];
+      // If never read (null) OR updated after last read
+      if (!lastRead || new Date(c.updated_at) > new Date(lastRead)) {
+        unreadCount++;
+      }
+    });
+
+    res.status(200).json({ count: unreadCount });
+  } catch (error) {
+    console.error('Get unread count error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 // Get or create direct conversation
 const getOrCreateDirectConversation = async (req, res) => {
   try {
@@ -58,7 +106,7 @@ const getOrCreateDirectConversation = async (req, res) => {
 
     // Create new conversation
     const conversation = await Conversation.create({ type: 'direct' });
-    
+
     await ConversationParticipant.bulkCreate([
       { conversation_id: conversation.id, user_id: userId },
       { conversation_id: conversation.id, user_id: recipientId }
@@ -125,7 +173,7 @@ const getConversations = async (req, res) => {
       where: { user_id: userId },
       attributes: ['conversation_id']
     });
-    
+
     console.log('Participant records:', participantRecords);
     const conversationIds = participantRecords.map(r => r.conversation_id);
     console.log('Conversation IDs:', conversationIds);
@@ -184,7 +232,7 @@ const getMessages = async (req, res) => {
 
     // Build query conditions
     const whereConditions = { conversation_id: conversationId };
-    
+
     // If 'before' timestamp provided, get messages before that time (for pagination)
     if (before) {
       whereConditions.created_at = {
@@ -206,7 +254,7 @@ const getMessages = async (req, res) => {
     // Reverse to get chronological order
     const chronologicalMessages = messages.reverse();
 
-    res.status(200).json({ 
+    res.status(200).json({
       messages: chronologicalMessages,
       hasMore: messages.length === parseInt(limit)
     });
@@ -237,7 +285,7 @@ const sendMessage = async (req, res) => {
     }
 
     console.log('About to check participant...');
-    
+
     // Verify sender is participant
     const participant = await ConversationParticipant.findOne({
       where: {
@@ -253,7 +301,7 @@ const sendMessage = async (req, res) => {
     }
 
     console.log('Creating message...');
-    
+
     // Create message
     const message = await Message.create({
       conversation_id: conversationId,
@@ -278,6 +326,17 @@ const sendMessage = async (req, res) => {
       { where: { id: conversationId } }
     );
 
+    // ✅ Update sender's last_read_at so they don't see their own message as unread
+    await ConversationParticipant.update(
+      { last_read_at: new Date() },
+      {
+        where: {
+          conversation_id: conversationId,
+          user_id: senderId
+        }
+      }
+    );
+
     // Broadcast message via WebSocket to all participants in the conversation
     const io = req.app.get('io');
     io.to(`conversation_${conversationId}`).emit('new_message', {
@@ -285,6 +344,26 @@ const sendMessage = async (req, res) => {
     });
 
     console.log(`📤 Message broadcast to conversation_${conversationId}`);
+
+    // ✅ NOTIFICATION UPDATE: Notify specific users so Sidebar gets the red dot
+    try {
+      const participants = await ConversationParticipant.findAll({
+        where: { conversation_id: conversationId },
+        attributes: ['user_id']
+      });
+
+      participants.forEach(p => {
+        // Don't notify self
+        if (p.user_id !== senderId) {
+          io.to(`user_${p.user_id}`).emit('new_message', {
+            message: fullMessage,
+            conversationId
+          });
+        }
+      });
+    } catch (notifyErr) {
+      console.error("Failed to send user notifications:", notifyErr);
+    }
 
     res.status(201).json({ message: fullMessage });
   } catch (error) {
@@ -298,6 +377,8 @@ module.exports = {
   getOrCreateDirectConversation,
   createGroupConversation,
   getConversations,
+  getConversations,
   getMessages,
-  sendMessage
+  sendMessage,
+  getUnreadCount // ✅ Export
 };

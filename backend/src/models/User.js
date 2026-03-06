@@ -9,7 +9,7 @@ const User = sequelize.define('User', {
   },
   firstName: {
     type: DataTypes.STRING,
-    allowNull: function() {
+    allowNull: function () {
       return !!this.googleId;
     },
     validate: {
@@ -20,7 +20,7 @@ const User = sequelize.define('User', {
   },
   lastName: {
     type: DataTypes.STRING,
-    allowNull: function() {
+    allowNull: function () {
       return !!this.googleId;
     },
     validate: {
@@ -43,7 +43,7 @@ const User = sequelize.define('User', {
   },
   password: {
     type: DataTypes.STRING,
-    allowNull: function() {
+    allowNull: function () {
       return !!this.googleId;
     }
   },
@@ -58,6 +58,18 @@ const User = sequelize.define('User', {
   },
   bio: {
     type: DataTypes.TEXT,
+    allowNull: true
+  },
+  title: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  company: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  location: {
+    type: DataTypes.STRING,
     allowNull: true
   },
   interests: {
@@ -79,30 +91,30 @@ const User = sequelize.define('User', {
     allowNull: false
   },
   is_mentor: {
-  type: DataTypes.BOOLEAN,
-  allowNull: false,
-  defaultValue: false,
-  comment: 'Whether user is a verified mentor'
-},
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    comment: 'Whether user is a verified mentor'
+  },
 
-mentor_verified_at: {
-  type: DataTypes.DATE,
-  allowNull: true,
-  comment: 'Timestamp when user was verified as mentor'
-},
+  mentor_verified_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Timestamp when user was verified as mentor'
+  },
 
-can_apply_mentor: {
-  type: DataTypes.BOOLEAN,
-  allowNull: false,
-  defaultValue: true,
-  comment: 'Whether user can apply for mentor status (prevents spam applications)'
-},
+  can_apply_mentor: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+    comment: 'Whether user can apply for mentor status (prevents spam applications)'
+  },
 
-mentor_application_cooldown_until: {
-  type: DataTypes.DATE,
-  allowNull: true,
-  comment: 'If application rejected, user must wait until this date to reapply (30 days)'
-}
+  mentor_application_cooldown_until: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'If application rejected, user must wait until this date to reapply (30 days)'
+  }
 }, {
   tableName: 'users',
   timestamps: true,
@@ -120,12 +132,12 @@ mentor_application_cooldown_until: {
 });
 
 // Virtual field for full name
-User.prototype.getFullName = function() {
+User.prototype.getFullName = function () {
   return `${this.firstName} ${this.lastName}`;
 };
 
 // Instance method to return user without password
-User.prototype.toJSON = function() {
+User.prototype.toJSON = function () {
   const values = { ...this.get() };
   delete values.password;
   return values;

@@ -1,7 +1,7 @@
-const { 
-  Resource, 
-  ResourceBookmark, 
-  ResourceReview, 
+const {
+  Resource,
+  ResourceBookmark,
+  ResourceReview,
   ResourceReviewHelpful,
   ResourceCompletion,
   ResourceComment,
@@ -58,7 +58,7 @@ const bookmarkResource = async (req, res) => {
     const mentorProfile = await MentorProfile.findOne({
       where: { user_id: resource.mentor_id }
     });
-    
+
     if (mentorProfile) {
       mentorProfile.total_bookmarks_received += 1;
       await mentorProfile.save();
@@ -111,11 +111,11 @@ const updateBookmarkStatus = async (req, res) => {
 
     // Update status and timestamps
     bookmark.status = status;
-    
+
     if (status === 'in_progress' && !bookmark.started_at) {
       bookmark.started_at = new Date();
     }
-    
+
     if (status === 'completed' && !bookmark.completed_at) {
       bookmark.completed_at = new Date();
     }
@@ -168,7 +168,7 @@ const removeBookmark = async (req, res) => {
       const mentorProfile = await MentorProfile.findOne({
         where: { user_id: resource.mentor_id }
       });
-      
+
       if (mentorProfile && mentorProfile.total_bookmarks_received > 0) {
         mentorProfile.total_bookmarks_received -= 1;
         await mentorProfile.save();
@@ -245,7 +245,7 @@ const completeResource = async (req, res) => {
     const mentorProfile = await MentorProfile.findOne({
       where: { user_id: resource.mentor_id }
     });
-    
+
     if (mentorProfile) {
       mentorProfile.total_completions_received += 1;
       await mentorProfile.save();
@@ -255,7 +255,7 @@ const completeResource = async (req, res) => {
     const bookmark = await ResourceBookmark.findOne({
       where: { user_id: userId, resource_id: id }
     });
-    
+
     if (bookmark) {
       bookmark.status = 'completed';
       bookmark.completed_at = new Date();
@@ -539,7 +539,7 @@ const getComments = async (req, res) => {
 
     // Get top-level comments (no parent)
     const { count, rows: comments } = await ResourceComment.findAndCountAll({
-      where: { 
+      where: {
         resource_id: id,
         parent_comment_id: null
       },
@@ -585,6 +585,58 @@ const getComments = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Error fetching comments',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get reviews for resource
+ * GET /api/resources/:id/reviews
+ */
+const getReviews = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+    const offset = (page - 1) * limit;
+
+    const { count, rows: reviews } = await ResourceReview.findAndCountAll({
+      where: { resource_id: id },
+      include: [
+        {
+          model: User,
+          as: 'reviewer', // Check model alias, usually 'user' or 'reviewer'
+          attributes: ['id', 'firstName', 'lastName', 'profilePicture']
+        }
+      ],
+      order: [['created_at', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    // Normalize user field for frontend (it expects 'user')
+    const normalizedReviews = reviews.map(r => {
+      const review = r.toJSON();
+      review.user = review.reviewer;
+      return review;
+    });
+
+    return res.status(200).json({
+      success: true,
+      reviews: normalizedReviews, // Frontend expects 'reviews'
+      pagination: {
+        total: count,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(count / limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('Get reviews error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error fetching reviews',
       error: error.message
     });
   }
@@ -656,7 +708,7 @@ const getResourceAnalytics = async (req, res) => {
     const userId = req.user.id;
 
     const resource = await Resource.findByPk(id);
-    
+
     if (!resource) {
       return res.status(404).json({
         success: false,
@@ -724,7 +776,7 @@ const updateResourceRating = async (resourceId) => {
     });
 
     const resource = await Resource.findByPk(resourceId);
-    
+
     if (!resource) return;
 
     if (reviews.length === 0) {
@@ -749,7 +801,7 @@ const updateResourceRating = async (resourceId) => {
       });
 
       const resourcesWithRatings = allMentorResources.filter(r => r.total_ratings > 0);
-      
+
       if (resourcesWithRatings.length > 0) {
         const totalAvg = resourcesWithRatings.reduce((sum, r) => sum + parseFloat(r.average_rating), 0);
         mentorProfile.average_resource_rating = (totalAvg / resourcesWithRatings.length).toFixed(2);
@@ -775,6 +827,7 @@ module.exports = {
   deleteReview,
   addComment,
   getComments,
+  getReviews,
   markReviewHelpful,
   getResourceAnalytics
 };

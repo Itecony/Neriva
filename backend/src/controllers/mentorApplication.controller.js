@@ -7,7 +7,7 @@ const { Op } = require('sequelize');
  */
 const applyForMentor = async (req, res) => {
   try {
-    const { essay, selected_projects, domains } = req.body;
+    const { essay, selected_projects, domains, teaching_style, mentorship_goals } = req.body;
     const userId = req.user.id;
 
     // Validation
@@ -57,7 +57,7 @@ const applyForMentor = async (req, res) => {
       'IoT',
       'AR/VR'
     ];
-    
+
     const invalidDomains = domains.filter(d => !validDomains.includes(d));
     if (invalidDomains.length > 0) {
       return res.status(400).json({
@@ -89,6 +89,8 @@ const applyForMentor = async (req, res) => {
       essay,
       selected_projects, // Store as-is (array of file paths, URLs, or upload identifiers)
       domains,
+      teaching_style,
+      mentorship_goals,
       status: 'pending'
     });
 
@@ -134,6 +136,8 @@ const getMyApplication = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
+
+    console.log(`[DEBUG] getMyApplication called. AppID: ${id}, UserID: ${userId}`);
 
     const application = await MentorApplication.findOne({
       where: { id, user_id: userId },
@@ -181,7 +185,7 @@ const updateApplication = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
-    const { essay, domains } = req.body;
+    const { essay, domains, teaching_style, mentorship_goals } = req.body;
 
     const application = await MentorApplication.findOne({
       where: { id, user_id: userId }
@@ -222,6 +226,9 @@ const updateApplication = async (req, res) => {
       }
       application.domains = domains;
     }
+
+    if (teaching_style) application.teaching_style = teaching_style;
+    if (mentorship_goals) application.mentorship_goals = mentorship_goals;
 
     await application.save();
 
@@ -393,6 +400,10 @@ const reviewApplication = async (req, res) => {
     if (status === 'approved') {
       const user = await User.findByPk(application.user_id);
       user.is_mentor = true;
+      // Update role to 'mentor' if not admin
+      if (user.role !== 'admin') {
+        user.role = 'mentor';
+      }
       user.mentor_verified_at = new Date();
       await user.save();
 

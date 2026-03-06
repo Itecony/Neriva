@@ -40,7 +40,7 @@ const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
 
 // Initialize Socket.io
-const productionOrigins = process.env.FRONTEND_URL 
+const productionOrigins = process.env.FRONTEND_URL
   ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
   : [];
 
@@ -52,7 +52,7 @@ const allAllowedOrigins = [...new Set([...productionOrigins, ...devOrigins])];
 
 const io = new Server(server, {
   cors: {
-    origin: function(origin, callback) {
+    origin: function (origin, callback) {
       if (!origin || allAllowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -84,7 +84,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Setup CORS with proper origin handling
 const corsOptions = {
-  origin: function(origin, callback) {
+  origin: function (origin, callback) {
     if (!origin || allAllowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -153,7 +153,7 @@ io.on('connection', (socket) => {
       userId
     });
   });
-  
+
   socket.on('message', (data) => {
     // Save to database
     // Emit to recipient
@@ -175,8 +175,8 @@ app.get('/api/health', async (req, res) => {
   } catch (error) {
     dbStatus = 'Disconnected';
   }
-  
-  res.json({ 
+
+  res.json({
     status: 'Server is running',
     database: dbStatus,
     websocket: 'Connected',
@@ -187,6 +187,11 @@ app.get('/api/health', async (req, res) => {
 // Serve uploaded images as static files
 app.use('/uploads', express.static('uploads'));
 
+// NEW: Mentorship & Resources routes (Mounted first to avoid collision with /users/:id)
+app.use('/api', mentorRoutes);
+app.use('/api', resourceRoutes);
+app.use('/api', followRoutes);
+
 // Routes
 app.use('/api', authRoutes);
 app.use('/api', userRoutes);
@@ -196,14 +201,9 @@ app.use('/api', notificationRoutes);
 app.use('/api', messageRoutes);
 app.use('/api', onboardingRoutes);
 
-// NEW: Mentorship & Resources routes
-app.use('/api', mentorRoutes);
-app.use('/api', resourceRoutes);
-app.use('/api', followRoutes);
-
 // 404 handler
 app.use('*', (req, res) => {
-  res.status(404).json({ 
+  res.status(404).json({
     message: 'Route not found',
     availableRoutes: [
       '-- Auth & User --',

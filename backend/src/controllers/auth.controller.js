@@ -11,22 +11,22 @@ const signup = async (req, res) => {
 
     // Validation
     if (!firstName || !lastName || !email || !password) {
-      return res.status(400).json({ 
-        message: 'First name, last name, email, and password are required' 
+      return res.status(400).json({
+        message: 'First name, last name, email, and password are required'
       });
     }
 
     if (password.length < 6) {
-      return res.status(400).json({ 
-        message: 'Password must be at least 6 characters long' 
+      return res.status(400).json({
+        message: 'Password must be at least 6 characters long'
       });
     }
 
     // Check if user already exists
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
-      return res.status(409).json({ 
-        message: 'User with this email already exists' 
+      return res.status(409).json({
+        message: 'User with this email already exists'
       });
     }
 
@@ -59,11 +59,11 @@ const signup = async (req, res) => {
 
   } catch (error) {
     console.error('Signup error:', error);
-    
+
     // Handle Sequelize validation errors
     if (error.name === 'SequelizeValidationError') {
-      return res.status(400).json({ 
-        message: error.errors[0].message 
+      return res.status(400).json({
+        message: error.errors[0].message
       });
     }
 
@@ -77,22 +77,22 @@ const signup = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    
+
     // Find user
     const user = await User.findOne({ where: { email } });
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
-    
+
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
-    
+
     // Generate token
     const token = generateToken(user);
-    
+
     // Return token AND user data
     res.json({
       token,
@@ -185,11 +185,11 @@ const getCurrentUser = async (req, res) => {
         // Include other relations as needed
       ]
     });
-    
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    
+
     res.json(user);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

@@ -11,7 +11,7 @@ const getAllMentors = async (req, res) => {
     const offset = (page - 1) * limit;
 
     const whereClause = {};
-    
+
     if (open_to_mentorship) {
       whereClause.open_to_mentorship = open_to_mentorship === 'true';
     }
@@ -94,7 +94,7 @@ const getMentorById = async (req, res) => {
       attributes: { exclude: ['password'] }
     });
 
-    if (!user || !user.is_mentor) {
+    if (!user || (!user.is_mentor && user.role !== 'admin')) {
       return res.status(404).json({
         success: false,
         message: 'Mentor not found'
@@ -125,9 +125,18 @@ const updateMyProfile = async (req, res) => {
     const userId = req.user.id;
     const { bio, teaching_style, open_to_mentorship, mentorship_description } = req.body;
 
-    const mentorProfile = await MentorProfile.findOne({
+    let mentorProfile = await MentorProfile.findOne({
       where: { user_id: userId }
     });
+
+    // Auto-create for Admin if missing
+    if (!mentorProfile && req.user.role === 'admin') {
+      mentorProfile = await MentorProfile.create({
+        user_id: userId,
+        open_to_mentorship: false,
+        verified_at: new Date()
+      });
+    }
 
     if (!mentorProfile) {
       return res.status(404).json({
@@ -201,9 +210,9 @@ const getMentorResources = async (req, res) => {
       });
     }
 
-    // Verify mentor exists
+    // Verify mentor exists (or is admin)
     const user = await User.findByPk(id);
-    if (!user || !user.is_mentor) {
+    if (!user || (!user.is_mentor && user.role !== 'admin')) {
       return res.status(404).json({
         success: false,
         message: 'Mentor not found'
@@ -267,10 +276,24 @@ const getMentorStats = async (req, res) => {
     });
 
     if (!mentorProfile) {
-      return res.status(404).json({
-        success: false,
-        message: 'Mentor not found'
-      });
+      // Check if user is admin (fetch user to confirm role)
+      const user = await User.findByPk(id);
+      if (user && user.role === 'admin') {
+        mentorProfile = {
+          total_resources_created: 0,
+          total_views_received: 0,
+          total_bookmarks_received: 0,
+          total_completions_received: 0,
+          average_resource_rating: 0,
+          expertise_domains: [],
+          verified_at: new Date()
+        };
+      } else {
+        return res.status(404).json({
+          success: false,
+          message: 'Mentor not found'
+        });
+      }
     }
 
     return res.status(200).json({
@@ -304,22 +327,34 @@ const getMyAnalytics = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const mentorProfile = await MentorProfile.findOne({
+    let mentorProfile = await MentorProfile.findOne({
       where: { user_id: userId }
     });
 
+    // Handle Admin without profile
     if (!mentorProfile) {
-      return res.status(404).json({
-        success: false,
-        message: 'Mentor profile not found'
-      });
+      if (req.user.role === 'admin') {
+        // Create a ghost profile object for analytics calculation
+        mentorProfile = {
+          total_resources_created: 0,
+          average_resource_rating: 0,
+          total_bookmarks_received: 0,
+          total_completions_received: 0,
+          verified_at: new Date()
+        };
+      } else {
+        return res.status(404).json({
+          success: false,
+          message: 'Mentor profile not found'
+        });
+      }
     }
 
     // Get resources with details
     const resources = await Resource.findAll({
       where: { mentor_id: userId },
       attributes: [
-        'id', 'title', 'view_count', 'bookmark_count', 
+        'id', 'title', 'view_count', 'bookmark_count',
         'completion_count', 'average_rating', 'total_ratings'
       ],
       order: [['view_count', 'DESC']]
@@ -329,7 +364,7 @@ const getMyAnalytics = async (req, res) => {
     const totalViews = resources.reduce((sum, r) => sum + r.view_count, 0);
     const totalBookmarks = resources.reduce((sum, r) => sum + r.bookmark_count, 0);
     const totalCompletions = resources.reduce((sum, r) => sum + r.completion_count, 0);
-    
+
     const mostPopular = resources.length > 0 ? resources[0] : null;
 
     return res.status(200).json({

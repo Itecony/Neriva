@@ -1,9 +1,9 @@
-const { 
-  ResourceBookmark, 
-  ResourceCompletion, 
+const {
+  ResourceBookmark,
+  ResourceCompletion,
   ResourceReview,
   Resource,
-  User 
+  User
 } = require('../models');
 const { Op } = require('sequelize');
 
@@ -14,109 +14,106 @@ const { Op } = require('sequelize');
 const getDashboard = async (req, res) => {
   try {
     const userId = req.user.id;
+    let bookmarkedCount = 0;
+    let inProgressCount = 0;
+    let completedCount = 0;
+    let completionRate = 0;
+    let totalHours = 0;
+    let recentBookmarks = [];
+    let recentlyCompleted = [];
+    let domains = [];
 
-    // Get bookmarked resources
-    const bookmarkedCount = await ResourceBookmark.count({
-      where: { user_id: userId }
-    });
+    // 1. Get stats counts
+    try {
+      bookmarkedCount = await ResourceBookmark.count({ where: { user_id: userId } });
+      inProgressCount = await ResourceBookmark.count({ where: { user_id: userId, status: 'in_progress' } });
+      completedCount = await ResourceBookmark.count({ where: { user_id: userId, status: 'completed' } });
 
-    // Get in-progress resources
-    const inProgressCount = await ResourceBookmark.count({
-      where: { 
-        user_id: userId,
-        status: 'in_progress'
-      }
-    });
+      completionRate = bookmarkedCount > 0
+        ? ((completedCount / bookmarkedCount) * 100).toFixed(2)
+        : 0;
+    } catch (e) {
+      console.error("Stats Count Error", e);
+      throw new Error(`Stats Error: ${e.message}`);
+    }
 
-    // Get completed resources
-    const completedCount = await ResourceBookmark.count({
-      where: { 
-        user_id: userId,
-        status: 'completed'
-      }
-    });
-
-    // Calculate completion rate
-    const completionRate = bookmarkedCount > 0
-      ? ((completedCount / bookmarkedCount) * 100).toFixed(2)
-      : 0;
-
-    // Get total learning hours (sum of estimated times for completed resources)
-    const completedBookmarks = await ResourceBookmark.findAll({
-      where: { 
-        user_id: userId,
-        status: 'completed'
-      },
-      include: [
-        {
+    // 2. Get total hours
+    try {
+      const completedBookmarks = await ResourceBookmark.findAll({
+        where: { user_id: userId, status: 'completed' },
+        include: [{
           model: Resource,
           as: 'resource',
           attributes: ['estimated_time_minutes']
-        }
-      ]
-    });
+        }]
+      });
 
-    const totalMinutes = completedBookmarks.reduce((sum, bookmark) => {
-      return sum + (bookmark.resource ? bookmark.resource.estimated_time_minutes : 0);
-    }, 0);
-    const totalHours = (totalMinutes / 60).toFixed(1);
+      const totalMinutes = completedBookmarks.reduce((sum, bookmark) => {
+        return sum + (bookmark.resource ? bookmark.resource.estimated_time_minutes : 0);
+      }, 0);
+      totalHours = (totalMinutes / 60).toFixed(1);
+    } catch (e) {
+      console.error("Hours Calc Error", e);
+      throw new Error(`Hours Error: ${e.message}`);
+    }
 
-    // Get recent bookmarks
-    const recentBookmarks = await ResourceBookmark.findAll({
-      where: { user_id: userId },
-      include: [
-        {
+    // 3. Get recent bookmarks
+    try {
+      recentBookmarks = await ResourceBookmark.findAll({
+        where: { user_id: userId },
+        include: [{
           model: Resource,
           as: 'resource',
-          include: [
-            {
-              model: User,
-              as: 'mentor',
-              attributes: ['id', 'firstName', 'lastName']
-            }
-          ]
-        }
-      ],
-      order: [['bookmarked_at', 'DESC']],
-      limit: 5
-    });
+          include: [{
+            model: User,
+            as: 'mentor',
+            attributes: ['id', 'firstName', 'lastName']
+          }]
+        }],
+        order: [['bookmarked_at', 'DESC']],
+        limit: 5
+      });
+    } catch (e) {
+      console.error("Recent Bookmarks Error", e);
+      throw new Error(`Bookmarks Error: ${e.message}`);
+    }
 
-    // Get recently completed
-    const recentlyCompleted = await ResourceBookmark.findAll({
-      where: { 
-        user_id: userId,
-        status: 'completed'
-      },
-      include: [
-        {
+    // 4. Get recently completed
+    try {
+      recentlyCompleted = await ResourceBookmark.findAll({
+        where: { user_id: userId, status: 'completed' },
+        include: [{
           model: Resource,
           as: 'resource',
-          include: [
-            {
-              model: User,
-              as: 'mentor',
-              attributes: ['id', 'firstName', 'lastName']
-            }
-          ]
-        }
-      ],
-      order: [['completed_at', 'DESC']],
-      limit: 5
-    });
+          include: [{
+            model: User,
+            as: 'mentor',
+            attributes: ['id', 'firstName', 'lastName']
+          }]
+        }],
+        order: [['completed_at', 'DESC']],
+        limit: 5
+      });
+    } catch (e) {
+      console.error("Completed Error", e);
+      throw new Error(`Completed Error: ${e.message}`);
+    }
 
-    // Get domains explored (from bookmarked resources)
-    const bookmarksWithResources = await ResourceBookmark.findAll({
-      where: { user_id: userId },
-      include: [
-        {
+    // 5. Get domains
+    try {
+      const bookmarksWithResources = await ResourceBookmark.findAll({
+        where: { user_id: userId },
+        include: [{
           model: Resource,
           as: 'resource',
           attributes: ['domain']
-        }
-      ]
-    });
-
-    const domains = [...new Set(bookmarksWithResources.map(b => b.resource?.domain).filter(Boolean))];
+        }]
+      });
+      domains = [...new Set(bookmarksWithResources.map(b => b.resource?.domain).filter(Boolean))];
+    } catch (e) {
+      console.error("Domains Error", e);
+      throw new Error(`Domains Error: ${e.message}`);
+    }
 
     return res.status(200).json({
       success: true,
@@ -139,7 +136,7 @@ const getDashboard = async (req, res) => {
     console.error('Get dashboard error:', error);
     return res.status(500).json({
       success: false,
-      message: 'Error fetching learning dashboard',
+      message: error.message,
       error: error.message
     });
   }

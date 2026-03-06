@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const postController = require('../controllers/post.controller');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, optionalAuth } = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
 
@@ -25,7 +25,7 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-const upload = multer({ 
+const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
@@ -34,9 +34,12 @@ const upload = multer({
 });
 
 // Public routes
-router.get('/posts', postController.getPosts);
-router.get('/posts/top', postController.getTopPosts);
-router.get('/posts/:id', postController.getPostById);
+
+
+// Public routes (but with Optional Auth to check likes)
+router.get('/posts', optionalAuth, postController.getPosts);
+router.get('/posts/top', optionalAuth, postController.getTopPosts);
+router.get('/posts/:id', optionalAuth, postController.getPostById);
 router.get('/posts/:id/comments', postController.getPostComments);
 
 // Authenticated routes (require authentication)
